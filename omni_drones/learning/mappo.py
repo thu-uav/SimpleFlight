@@ -118,7 +118,7 @@ class MAPPOPolicy(object):
         self.actor_out_keys = [
             self.act_name,
             self.act_logps_name,
-            f"{self.agent_spec.name}.action_entropy",
+            # f"{self.agent_spec.name}.action_entropy",
         ]
 
         if cfg.get("rnn", None):

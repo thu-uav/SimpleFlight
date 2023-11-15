@@ -82,7 +82,7 @@ def main(cfg):
         # "tdmpc": TDMPCPolicy
     }
 
-    env_class = IsaacEnv.REGISTRY[run.config]
+    env_class = IsaacEnv.REGISTRY[cfg.task.name]
     base_env = env_class(cfg, headless=cfg.headless)
     
     def log(info):
@@ -173,9 +173,8 @@ def main(cfg):
         cfg.algo, agent_spec=agent_spec, device="cuda"
     )
 
-    ckpt_name = "checkpoint_final.pt"
-    ckpt = wandb.restore(ckpt_name, run.path)
-    state_dict = torch.load(ckpt)
+    ckpt_name = "/home/jingyihuang/isaac_ws/OmniDrones/scripts/wandb/offline-run-20231102_122223-7jbog14j/files/checkpoint_final.pt"
+    state_dict = torch.load(ckpt_name)
     policy.load_state_dict(state_dict)
 
     @torch.no_grad()
@@ -211,6 +210,7 @@ def main(cfg):
 
         done = trajs.get(("next", "done"))
         first_done = torch.argmax(done.long(), dim=1).cpu()
+        print(trajs)
 
         def take_first_episode(tensor: torch.Tensor):
             indices = first_done.reshape(first_done.shape+(1,)*(tensor.ndim-2))

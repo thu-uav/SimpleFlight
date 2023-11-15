@@ -24,13 +24,13 @@
 import os
 
 import torch
-from omni.isaac.kit import SimulationApp
 from tensordict import TensorDict
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), os.path.pardir, "cfg")
 
 
 def init_simulation_app(cfg):
+    from omni.isaac.kit import SimulationApp
     # launch the simulator
     config = {"headless": cfg["headless"], "anti_aliasing": 0}
     # load cheaper kit config in headless

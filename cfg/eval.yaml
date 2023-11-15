@@ -1,4 +1,4 @@
-headless: false
+headless: true
 
 sim: ${task.sim}
 env: ${task.env}
@@ -23,6 +23,6 @@ wandb:
   tags: 
 
 defaults:
-  - task: Hover
+  - task: FormationBallForward
   - algo: mappo
   - _self_
