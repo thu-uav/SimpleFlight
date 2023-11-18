@@ -173,7 +173,7 @@ def main(cfg):
         cfg.algo, agent_spec=agent_spec, device="cuda"
     )
 
-    ckpt_name = "/home/jingyihuang/isaac_ws/OmniDrones/scripts/wandb/offline-run-20231102_122223-7jbog14j/files/checkpoint_final.pt"
+    ckpt_name = "/home/jingyihuang/crazyswarm2_twh/ros2_ws/src/crazyswarm2/crazyflie_examples/crazyflie_examples/model/checkpoint_hover_1017.pt"
     state_dict = torch.load(ckpt_name)
     policy.load_state_dict(state_dict)
 

@@ -185,6 +185,10 @@ def main(cfg):
     # state_dict = torch.load(ckpt_name)
     # policy.load_state_dict(state_dict)
 
+    ckpt_name = "/home/jingyihuang/crazyswarm2_twh/ros2_ws/src/crazyswarm2/crazyflie_examples/crazyflie_examples/model/checkpoint_hover_1017.pt"
+    state_dict = torch.load(ckpt_name)
+    policy.load_state_dict(state_dict)
+
     stats_keys = [
         k for k in base_env.observation_spec.keys(True, True) 
         if isinstance(k, tuple) and k[0]=="stats"
@@ -265,14 +269,14 @@ def main(cfg):
         info = {"env_frames": collector._frames, "rollout_fps": collector._fps}
         episode_stats(data.to_tensordict())
 
-        if len(episode_stats) >= base_env.num_envs:
-            stats = {
-                "train/" + (".".join(k) if isinstance(k, tuple) else k): torch.mean(v).item() 
-                for k, v in episode_stats.pop().items(True, True)
-            }
-            info.update(stats)
+        # if len(episode_stats) >= base_env.num_envs:
+        #     stats = {
+        #         "train/" + (".".join(k) if isinstance(k, tuple) else k): torch.mean(v).item() 
+        #         for k, v in episode_stats.pop().items(True, True)
+        #     }
+        #     info.update(stats)
         
-        info.update(policy.train_op(data.to_tensordict()))
+        # info.update(policy.train_op(data.to_tensordict()))
 
         if eval_interval > 0 and i % eval_interval == 0:
             logging.info(f"Eval at {collector._frames} steps.")

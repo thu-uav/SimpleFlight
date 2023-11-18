@@ -201,7 +201,7 @@ class Hover(IsaacEnv):
 
     def _set_specs(self):
         drone_state_dim = self.drone.state_spec.shape[-1]
-        observation_dim = drone_state_dim + 3
+        observation_dim = drone_state_dim
 
         if self.cfg.task.time_encoding:
             self.time_encoding_dim = 4
@@ -292,9 +292,9 @@ class Hover(IsaacEnv):
 
         # relative position and heading
         self.rpos = self.target_pos - self.root_state[..., :3]
-        self.rheading = self.target_heading - self.root_state[..., 13:16]
+        # self.rheading = self.root_state[..., 13:16]
         
-        obs = [self.rpos, self.root_state[..., 3:], self.rheading,]
+        obs = [self.rpos, self.root_state[..., 3:]]
         if self.time_encoding:
             t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
             obs.append(t.expand(-1, self.time_encoding_dim).unsqueeze(1))
@@ -331,7 +331,7 @@ class Hover(IsaacEnv):
 
         assert reward_pose.shape == reward_up.shape == reward_spin.shape
         reward = (
-            reward_pose 
+            reward_pose * 2
             + reward_pose * (reward_up + reward_spin) 
             + reward_effort 
             + reward_action_smoothness

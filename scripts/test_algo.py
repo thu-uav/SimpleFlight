@@ -173,6 +173,10 @@ def main(cfg):
 
     agent_spec: AgentSpec = env.agent_spec["drone"]
     policy = algos[cfg.algo.name.lower()](cfg.algo, agent_spec=agent_spec, device="cuda")
+    
+    ckpt_name = "/home/jingyihuang/crazyswarm2_twh/ros2_ws/src/crazyswarm2/crazyflie_examples/crazyflie_examples/model/checkpoint_hover_1017.pt"
+    state_dict = torch.load(ckpt_name)
+    policy.load_state_dict(state_dict)
 
     frames_per_batch = env.num_envs * int(cfg.algo.train_every)
     total_frames = cfg.get("total_frames", -1) // frames_per_batch * frames_per_batch
@@ -240,7 +244,7 @@ def main(cfg):
         #     }
         #     info.update(stats)
         
-        info.update(policy.train_op(data.to_tensordict()))
+        # info.update(policy.train_op(data.to_tensordict()))
 
         if eval_interval > 0 and i % eval_interval == 0:
             logging.info(f"Eval at {collector._frames} steps.")
@@ -274,13 +278,13 @@ def main(cfg):
     info.update(evaluate())
     run.log(info)
 
-    if hasattr(policy, "state_dict"):
-        ckpt_path = os.path.join(run.dir, "checkpoint_final.pt")
-        logging.info(f"Save checkpoint to {str(ckpt_path)}")
-        torch.save(policy.state_dict(), ckpt_path)
+    # if hasattr(policy, "state_dict"):
+    #     ckpt_path = os.path.join(run.dir, "checkpoint_final.pt")
+    #     logging.info(f"Save checkpoint to {str(ckpt_path)}")
+    #     torch.save(policy.state_dict(), ckpt_path)
 
-    wandb.save(os.path.join(run.dir, "checkpoint*"))
-    wandb.finish()
+    # wandb.save(os.path.join(run.dir, "checkpoint*"))
+    # wandb.finish()
     
     # simulation_app.close()
 
