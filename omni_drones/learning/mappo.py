@@ -232,9 +232,12 @@ class MAPPOPolicy(object):
             actor_input["is_init"], (*actor_input.batch_size, self.agent_spec.n)
         )
         actor_input.batch_size = [*actor_input.batch_size, self.agent_spec.n]
-        actor_output = vmap(self.actor, in_dims=(1, 0), out_dims=1, randomness="different")(
-            actor_input, self.actor_params, deterministic=deterministic
-        )
+        if self.cfg.share_actor:
+            actor_output = self.actor(actor_input, self.actor_params, deterministic=deterministic)
+        else:
+            actor_output = vmap(self.actor, in_dims=(1, 0), out_dims=1, randomness="different")(
+                actor_input, self.actor_params, deterministic=deterministic
+            )
 
         tensordict.update(actor_output)
         tensordict.update(self.value_op(tensordict))
@@ -408,9 +411,9 @@ class MAPPOPolicy(object):
     
     def load_state_dict(self, state_dict):
         self.actor_params = TensorDictParams(state_dict["actor_params"].to_tensordict())
-        self.actor_opt = torch.optim.Adam(self.actor_params.parameters(), lr=self.cfg.actor.lr)
-        self.critic.load_state_dict(state_dict["critic"])
-        self.value_normalizer.load_state_dict(state_dict["value_normalizer"])
+        # self.actor_opt = torch.optim.Adam(self.actor_params.parameters(), lr=self.cfg.actor.lr)
+        # self.critic.load_state_dict(state_dict["critic"])
+        # self.value_normalizer.load_state_dict(state_dict["value_normalizer"])
 
 
 def make_dataset_naive(

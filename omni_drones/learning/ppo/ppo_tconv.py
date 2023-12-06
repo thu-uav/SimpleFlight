@@ -100,13 +100,14 @@ class PPOTConvPolicy:
     def __init__(
         self, 
         cfg: PPOConfig, 
-        observation_spec: CompositeSpec, 
-        action_spec: CompositeSpec, 
-        reward_spec: TensorSpec,
+        env,
         device
     ):
         self.cfg = cfg
         self.device = device
+        observation_spec = env.observation_spec
+        action_spec = env.action_spec
+        reward_spec = env.reward_spec
 
         self.entropy_coef = 0.001
         self.clip_param = 0.1
@@ -250,6 +251,21 @@ class PPOTConvPolicy:
             "critic_grad_norm": critic_grad_norm,
             "explained_var": explained_var
         }, [])
+
+    def state_dict(self):
+        state_dict = {
+            "critic": self.critic.state_dict(),
+            "actor": self.actor.state_dict(),
+            "value_norm": self.value_norm.state_dict(),
+            "history_encoder": self.history_encoder.state_dict(),
+        }
+        return state_dict
+    
+    def load_state_dict(self, state_dict):
+        self.critic.load_state_dict(state_dict["critic"])
+        self.actor.load_state_dict(state_dict["actor"])
+        self.value_norm.load_state_dict(state_dict["value_norm"])
+        self.history_encoder.load_state_dict(state_dict["history_encoder"])
 
 
 def make_batch(tensordict: TensorDict, num_minibatches: int):

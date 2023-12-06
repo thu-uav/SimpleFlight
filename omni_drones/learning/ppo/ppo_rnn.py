@@ -123,8 +123,8 @@ class GRU(nn.Module):
 
     def forward(self, x: torch.Tensor, is_init: torch.Tensor, hx: torch.Tensor):
         T = x.shape[1]
-        # if is_init is None:
-        #     is_init = torch.ones(*x.shape[:-1], 1, device=x.device)
+        if is_init is None:
+            is_init = torch.ones(*x.shape[:-1], 1, device=x.device)
         # if hx is None:
         #     hx = torch.zeros(*x.shape[:-1], self.gru.hidden_size, device=x.device)
         hx = hx[:, 0]
@@ -178,13 +178,14 @@ class PPORNNPolicy:
     def __init__(
         self,
         cfg: PPOConfig,
-        observation_spec: CompositeSpec,
-        action_spec: TensorSpec,
-        reward_spec: TensorSpec,
+        env,
         device,
     ):
         self.cfg = cfg
         self.device = device
+        observation_spec = env.observation_spec
+        action_spec = env.action_spec
+        reward_spec = env.reward_spec
 
         self.entropy_coef = 0.001
         self.clip_param = 0.1
@@ -392,6 +393,18 @@ class PPORNNPolicy:
             [],
         )
 
+    def state_dict(self):
+        state_dict = {
+            "critic": self.critic.state_dict(),
+            "actor": self.actor.state_dict(),
+            "value_norm": self.value_norm.state_dict(),
+        }
+        return state_dict
+    
+    def load_state_dict(self, state_dict):
+        self.critic.load_state_dict(state_dict["critic"])
+        self.actor.load_state_dict(state_dict["actor"])
+        self.value_norm.load_state_dict(state_dict["value_norm"])
 
 def make_batch(tensordict: TensorDict, num_minibatches: int, seq_len: int = -1):
     if seq_len > 1:
