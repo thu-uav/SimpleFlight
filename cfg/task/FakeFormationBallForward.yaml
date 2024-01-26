@@ -1,0 +1,80 @@
+name: FakeFormationBallForward
+
+defaults:
+  # see https://hydra.cc/docs/advanced/overriding_packages/
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+  # - /base/randomization_base@_here_
+
+env: 
+  num_envs: 1
+
+random_ball_num: false
+throw_together: false
+ball_num: 1
+target_height: [0, 0, 1.5]
+target_vel: [0., 2.0, 0.]
+random_ball_speed: false
+ball_speed: 3.0
+max_ball_speed: 5.0
+min_ball_speed: 2.0
+use_separate_obs: false
+use_world_state: false
+use_abs_b_vel: false
+throw_ball_pattern: 1 # 1 for (vx, vy)<-> ball_speed; 2 for (vx, vy, vz)<->ball_speed
+throw_center_ratio: 1.
+drone_model: crazyflie # 直径 0.34
+force_sensor: false
+time_encoding: true
+throw_threshold: 150
+formation_size: 1
+reward_effort_weight: 0.
+formation_type: l # valid for h, l
+normalize_formation: True # only be used in cost_l
+formation_size_coeff: 1.0 # size reward coeff, used in cost_l
+reward_type: 1 # 1 for total reward, 2 for ball reward + drone reward + done reward
+eval: false
+
+static_obs_num: 0
+use_top_k_obs: false
+obs_range: 3
+top_k: 5
+static_obs_type: 2
+# 1 for static_obs_num * 10 cubes that form static_obs_num columns
+# 2 for static_obs_num whole columns
+# 3 for static_obs_num * 10 cubes
+
+terminated_reward: 40.
+crash_penalty: -40.
+too_close_penalty: -40.
+hit_penalty: -40.
+
+permute_drone_obs: false
+permute_ball_obs: false
+
+hard_safe_distance: 0.4
+safe_distance: 0.6
+ball_hit_distance: 0.15 # hit
+ball_safe_distance: 0.3 # hard penalty
+soft_ball_safe_distance: 0.4 # soft penalty
+
+ball_reward_coeff: 2. # 40
+ball_hard_reward_coeff: 10. # 10
+formation_coeff: 1.0
+velocity_coeff: 1.0
+height_coeff: 1.0
+separation_coeff: 1.0
+has_ball_coeff: 0.2
+no_ball_coeff: 1.0
+after_throw_coeff: 0.2 # additional to no ball case
+
+formation: line #dense_square # hexagon # tetragon
+
+flatten_obs: false
+flatten_state: false
+
+action_transform: rate
+randomization:
+  drone:
+    train:
+      mass_scale: [1., 1.1]
