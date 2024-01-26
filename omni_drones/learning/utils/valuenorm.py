@@ -25,7 +25,8 @@ from typing import Iterable, Union
 
 import torch
 import torch.nn as nn
-
+import math
+import torch.nn.functional as F
 
 class Normalizer(nn.Module):
     def update(self, input_vector: torch.Tensor):
@@ -160,3 +161,89 @@ class ValueNorm2(Normalizer):
             return input_vector * torch.sqrt(self.running_var) + self.running_mean
         else:
             return input_vector * torch.sqrt(self.running_var)
+
+class PopArt(Normalizer):
+    def __init__(
+        self,
+        input_shape: Union[int, Iterable],
+        beta=0.995,
+        epsilon=1e-5,
+        output_shape: Union[int, Iterable] =1, # task number
+    ) -> None:
+        super().__init__()
+
+        self.input_shape = (
+            torch.Size(input_shape)
+            if isinstance(input_shape, Iterable)
+            else torch.Size((input_shape,))
+        )
+
+        self.epsilon = epsilon
+        self.beta = beta
+
+        self.weight: torch.Tensor
+        self.bias: torch.Tensor
+        self.stddev: torch.Tensor
+        self.mean: torch.Tensor
+        self.mean_sq: torch.Tensor
+        self.debiasing_term: torch.Tensor
+
+        self.weight = nn.Parameter(torch.Tensor(output_shape, input_shape))
+        self.bias = nn.Parameter(torch.Tensor(output_shape))
+    
+        self.register_buffer("stddev", torch.ones(output_shape))
+        self.register_buffer("mean", torch.zeros(output_shape))
+        self.register_buffer("mean_sq", torch.zeros(output_shape))
+        self.register_buffer("debiasing_term", torch.tensor(0.0))
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        torch.nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in)
+            torch.nn.init.uniform_(self.bias, -bound, bound)
+        self.mean.zero_()
+        self.mean_sq.zero_()
+        self.debiasing_term.zero_()
+
+    @torch.no_grad()
+    def update(self, input_vector: torch.Tensor):
+        dim = tuple(range(input_vector.dim() - len(self.input_shape)))
+        old_mean, old_var = self.debiased_mean_var()
+        old_stddev = torch.sqrt(old_var)
+
+        batch_mean = input_vector.mean(dim=dim)
+        batch_sq_mean = (input_vector ** 2).mean(dim=dim)
+
+        self.mean.mul_(self.beta).add_(batch_mean * (1.0 - self.beta))
+        self.mean_sq.mul_(self.beta).add_(batch_sq_mean * (1.0 - self.beta))
+        self.debiasing_term.mul_(self.beta).add_(1.0 * (1.0 - self.beta))
+
+        self.stddev = (self.mean_sq - self.mean ** 2).sqrt().clamp(min=1e-4)
+        
+        new_mean, new_var = self.debiased_mean_var()
+        new_stddev = torch.sqrt(new_var)
+        
+        self.weight.data = (self.weight.t() * old_stddev / new_stddev).t()
+        self.bias.data = (old_stddev * self.bias + old_mean - new_mean) / new_stddev
+
+    def normalize(self, input_vector: torch.Tensor):
+        mean, var = self.debiased_mean_var()
+        out = (input_vector - mean) / torch.sqrt(var)
+        return out
+
+    def denormalize(self, input_vector: torch.Tensor):
+        mean, var = self.debiased_mean_var()
+        out = input_vector * torch.sqrt(var) + mean
+        return out
+    
+    def forward(self, input_vector):
+        return F.linear(input_vector, self.weight, self.bias)
+    
+    def debiased_mean_var(self):
+        debiased_mean = self.mean / self.debiasing_term.clamp(min=self.epsilon)
+        debiased_mean_sq = self.mean_sq / self.debiasing_term.clamp(min=self.epsilon)
+        debiased_var = (debiased_mean_sq - debiased_mean ** 2).clamp(min=1e-2)
+        return debiased_mean, debiased_var

@@ -81,20 +81,19 @@ class PPOPolicy:
     def __init__(
         self, 
         cfg: PPOConfig, 
-        env,
+        observation_spec: CompositeSpec, 
+        action_spec: CompositeSpec, 
+        reward_spec: TensorSpec,
         device
     ):
         self.cfg = cfg
         self.device = device
-        observation_spec = env.observation_spec
-        action_spec = env.action_spec
-        reward_spec = env.reward_spec
 
         self.entropy_coef = 0.001
         self.clip_param = 0.1
         self.critic_loss_fn = nn.HuberLoss(delta=10)
         self.n_agents, self.action_dim = action_spec.shape[-2:]
-        # intrinsics_dim = observation_spec[("agents", "intrinsics")].shape[-1]
+        intrinsics_dim = observation_spec[("agents", "intrinsics")].shape[-1]
         self.gae = GAE(0.99, 0.95)
 
         fake_input = observation_spec.zero()
@@ -239,18 +238,6 @@ class PPOPolicy:
             "explained_var": explained_var
         }, [])
 
-    def state_dict(self):
-        state_dict = {
-            "critic": self.critic.state_dict(),
-            "actor": self.actor.state_dict(),
-            "value_norm": self.value_norm.state_dict(),
-        }
-        return state_dict
-    
-    def load_state_dict(self, state_dict):
-        # self.critic.load_state_dict(state_dict["critic"])
-        self.actor.load_state_dict(state_dict["actor"])
-        # self.value_norm.load_state_dict(state_dict["value_norm"])
 
 def make_batch(tensordict: TensorDict, num_minibatches: int):
     tensordict = tensordict.reshape(-1)

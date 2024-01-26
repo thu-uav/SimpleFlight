@@ -209,9 +209,9 @@ class IndependentNormalModule(nn.Module):
 
 
 class TanhNormalWithEntropy(TanhNormal):
-
     def entropy(self):
-        return None
+        return -self.log_prob(self.sample())
+
 
 
 class TanhIndependentNormalModule(nn.Module):

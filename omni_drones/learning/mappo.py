@@ -118,7 +118,7 @@ class MAPPOPolicy(object):
         self.actor_out_keys = [
             self.act_name,
             self.act_logps_name,
-            # f"{self.agent_spec.name}.action_entropy",
+            f"{self.agent_spec.name}.action_entropy",
         ]
 
         if cfg.get("rnn", None):
@@ -158,7 +158,7 @@ class MAPPOPolicy(object):
 
         assert self.cfg.critic_input in ("state", "obs")
         if self.cfg.critic_input == "state" and self.agent_spec.state_spec is not None:
-            self.critic_in_keys = ["state"]
+            self.critic_in_keys = [("agents", "state")]
             self.critic_out_keys = ["state_value"]
             if cfg.get("rnn", None):
                 self.critic_in_keys.extend([
@@ -188,7 +188,7 @@ class MAPPOPolicy(object):
                 in_keys=self.critic_in_keys,
                 out_keys=self.critic_out_keys,
             ).to(self.device)
-            self.value_func = vmap(self.critic, in_dims=1, out_dims=1)
+            self.value_func = vmap(self.critic, in_dims=1, out_dims=1) # eliminate the drone_num dimension
 
         self.critic_opt = torch.optim.Adam(
             self.critic.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay
@@ -200,7 +200,9 @@ class MAPPOPolicy(object):
                 self.critic_opt, **cfg.lr_scheduler_kwargs
             )
 
-        if hasattr(cfg, "value_norm") and cfg.value_norm is not None:
+        if cfg.use_popart:
+            self.value_normalizer = self.critic.v_out
+        elif hasattr(cfg, "value_norm") and cfg.value_norm is not None:
             # The original MAPPO implementation uses ValueNorm1 with a very large beta,
             # and normalizes advantages at batch level.
             # Tianshou (https://github.com/thu-ml/tianshou) uses ValueNorm2 with subtract_mean=False,
@@ -231,7 +233,7 @@ class MAPPOPolicy(object):
             actor_input["is_init"] = expand_right(
             actor_input["is_init"], (*actor_input.batch_size, self.agent_spec.n)
         )
-        actor_input.batch_size = [*actor_input.batch_size, self.agent_spec.n]
+        actor_input.batch_size = [*actor_input.batch_size, self.agent_spec.n] # [env_num, drone_num]
         if self.cfg.share_actor:
             actor_output = self.actor(actor_input, self.actor_params, deterministic=deterministic)
         else:
@@ -241,10 +243,14 @@ class MAPPOPolicy(object):
 
         tensordict.update(actor_output)
         tensordict.update(self.value_op(tensordict))
+        # tensordict[('info', 'prev_network_output')] = tensordict[('info', 'network_output')].clone()
+        # tensordict[('info', 'network_output')] = actor_output[("agents", "action")]
         return tensordict
-
+    
     def update_actor(self, batch: TensorDict) -> Dict[str, Any]:
         advantages = batch["advantages"]
+        if advantages.shape[-1] > 1:
+            advantages = advantages.mean(-1, keepdim=True)
         actor_input = batch.select(*self.actor_in_keys)
         if "is_init" in actor_input.keys():
             actor_input["is_init"] = expand_right(
@@ -258,14 +264,17 @@ class MAPPOPolicy(object):
                 actor_input, self.actor_params, eval_action=True
             )
         else: # [N, A, *]
-            actor_output = vmap(self.actor, in_dims=(1, 0), out_dims=1)(
-                actor_input, self.actor_params, eval_action=True
-            )
+            if self.cfg.share_actor:
+                actor_output = self.actor(actor_input, self.actor_params, eval_action=True)
+            else:
+                actor_output = vmap(self.actor, in_dims=(1, 0), out_dims=1)(
+                    actor_input, self.actor_params, eval_action=True
+                )
 
         log_probs_new = actor_output[self.act_logps_name]
-        if not self.cfg.actor.tanh:
-            dist_entropy = actor_output[f"{self.agent_spec.name}.action_entropy"]
-            assert advantages.shape == log_probs_new.shape == dist_entropy.shape
+        # if not self.cfg.actor.tanh:
+        dist_entropy = actor_output[f"{self.agent_spec.name}.action_entropy"]
+        assert advantages.shape == log_probs_new.shape == dist_entropy.shape
 
         ratio = torch.exp(log_probs_new - log_probs_old)
         surr1 = ratio * advantages
@@ -274,10 +283,10 @@ class MAPPOPolicy(object):
             * advantages
         )
         policy_loss = - torch.mean(torch.min(surr1, surr2) * self.act_dim)
-        if not self.cfg.actor.tanh:
-            entropy_loss = - torch.mean(dist_entropy)
-        else:
-            entropy_loss = - torch.mean(-log_probs_new)
+        # if not self.cfg.actor.tanh:
+        entropy_loss = - torch.mean(dist_entropy)
+        # else:
+        #     entropy_loss = - torch.mean(-log_probs_new)
 
         self.actor_opt.zero_grad()
         (policy_loss + entropy_loss * self.cfg.entropy_coef).backward()
@@ -338,8 +347,6 @@ class MAPPOPolicy(object):
             value_output = self.value_op(next_tensordict)
 
         rewards = tensordict.get(("next", *self.reward_name))
-        if rewards.shape[-1] != 1:
-            rewards = rewards.sum(-1, keepdim=True)
 
         values = tensordict["state_value"]
         next_value = value_output["state_value"].squeeze(0)
@@ -395,8 +402,8 @@ class MAPPOPolicy(object):
         train_info["advantages_std"] = advantages_std.item()
         if isinstance(self.agent_spec.action_spec, (BoundedTensorSpec, UnboundedTensorSpec)):
             train_info["action_norm"] = tensordict[self.act_name].norm(dim=-1).mean().item()
-        if hasattr(self, "value_normalizer"):
-            train_info["value_running_mean"] = self.value_normalizer.running_mean.mean().item()
+        # if hasattr(self, "value_normalizer"):
+        #     train_info["value_running_mean"] = self.value_normalizer.running_mean.mean().item()
         
         self.n_updates += 1
         return {f"{self.agent_spec.name}/{k}": v for k, v in train_info.items()}
@@ -411,9 +418,9 @@ class MAPPOPolicy(object):
     
     def load_state_dict(self, state_dict):
         self.actor_params = TensorDictParams(state_dict["actor_params"].to_tensordict())
-        # self.actor_opt = torch.optim.Adam(self.actor_params.parameters(), lr=self.cfg.actor.lr)
-        # self.critic.load_state_dict(state_dict["critic"])
-        # self.value_normalizer.load_state_dict(state_dict["value_normalizer"])
+        self.actor_opt = torch.optim.Adam(self.actor_params.parameters(), lr=self.cfg.actor.lr)
+        self.critic.load_state_dict(state_dict["critic"])
+        self.value_normalizer.load_state_dict(state_dict["value_normalizer"])
 
 
 def make_dataset_naive(
@@ -478,9 +485,10 @@ def make_ppo_actor(cfg, observation_spec: TensorSpec, action_spec: TensorSpec):
 
 
 def make_critic(cfg, state_spec: TensorSpec, reward_spec: TensorSpec, centralized=False):
+#     print("================== in make critic ======================")
     assert isinstance(reward_spec, (UnboundedTensorSpec, BoundedTensorSpec))
     encoder = make_encoder(cfg, state_spec)
-    
+    # raise NotImplementedError()
     if cfg.get("rnn", None):
         rnn_cls = {"gru": GRU}[cfg.rnn.cls.lower()]
         rnn = rnn_cls(input_size=encoder.output_shape.numel(), **cfg.rnn.kwargs)
@@ -488,11 +496,17 @@ def make_critic(cfg, state_spec: TensorSpec, reward_spec: TensorSpec, centralize
         rnn = None
 
     if centralized:
-        v_out = nn.Linear(encoder.output_shape.numel(), reward_spec.shape[-2:].numel())
+        if cfg.use_popart:
+            v_out = valuenorm.PopArt(encoder.output_shape.numel(), output_shape=reward_spec.shape[-2:].numel())
+        else:
+            v_out = nn.Linear(encoder.output_shape.numel(), reward_spec.shape[-2:].numel())
         nn.init.orthogonal_(v_out.weight, cfg.gain)
         return Critic(encoder, rnn, v_out, reward_spec.shape[-2:])
     else:
-        v_out = nn.Linear(encoder.output_shape.numel(), reward_spec.shape[-1])
+        if cfg.use_popart:
+            v_out = valuenorm.PopArt(encoder.output_shape.numel(), output_shape=reward_spec.shape[-1])
+        else:
+            v_out = nn.Linear(encoder.output_shape.numel(), reward_spec.shape[-1])
         nn.init.orthogonal_(v_out.weight, cfg.gain)
         return Critic(encoder, rnn, v_out, reward_spec.shape[-1:])
 
@@ -565,8 +579,8 @@ class Critic(nn.Module):
 
         values = self.v_out(critic_features)
 
-        if len(self.output_shape) > 1:
-            values = values.unflatten(-1, self.output_shape)
+        # if len(self.output_shape) > 1:
+        #     values = values.unflatten(-1, self.output_shape)
         return values, rnn_state
 
 

@@ -28,6 +28,6 @@ wandb:
   tags: 
 
 defaults:
-  - task: FakeHover
+  - task: FakeFormationBallForward
   - algo: mappo
   - _self_

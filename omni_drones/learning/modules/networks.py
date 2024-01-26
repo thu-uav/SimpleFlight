@@ -148,10 +148,10 @@ class SplitEmbedding(nn.Module):
             raise NotImplementedError(embed_type)
 
         if layer_norm:
-            # self.layer_norm = nn.LayerNorm(embed_dim)
-            self.layer_norm = nn.LayerNorm(
-                (self.num_entities, embed_dim)
-            )  # somehow faster
+            self.layer_norm = nn.LayerNorm(embed_dim)
+            # self.layer_norm = nn.LayerNorm(
+            #     (self.num_entities, embed_dim)
+            # )  # somehow faster
 
     def forward(self, tensordict: TensorDict):
         embeddings = torch.cat(
@@ -255,51 +255,164 @@ class PartialAttentionEncoder(nn.Module):
         embed_dim: int = 128,
         embed_type: str = "linear",
         num_heads: int = 1,
-        dim_feedforward=128,
-        layer_norm=True,
+        layer_norm=False,
         norm_first=False,
+        attention_type=0,
+        self_attention=False,
     ) -> None:
         super().__init__()
         self.embed_dim = embed_dim
-        self.output_shape = torch.Size((self.embed_dim,))
         self.split_embed = SplitEmbedding(input_spec, embed_dim, layer_norm, embed_type)
-        self.attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
-        if query_index is None:
-            self.query_index = ...
-        elif isinstance(query_index, int):
-            self.query_index = [query_index]
-        else:
-            self.query_index = list(query_index)
+        self.attention_type = attention_type
+        self.self_attention = self_attention
+        if self_attention:
+            self.self_attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
+            self.self_norm1 = nn.LayerNorm(embed_dim)
+            self.self_norm2 = nn.LayerNorm(embed_dim)
+            self.self_linear1 = nn.Linear(embed_dim, embed_dim)
+            self.self_activation = F.gelu
+            self.self_linear2 = nn.Linear(embed_dim, embed_dim)
 
-        self.linear1 = nn.Linear(embed_dim, dim_feedforward)
-        self.activation = F.gelu
-        self.linear2 = nn.Linear(dim_feedforward, embed_dim)
+        if attention_type != -1 and attention_type != 6:
+            # no attention, directly calculate the max or mean of all ball information
+            self.attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
 
-        self.norm_first = norm_first
-        self.norm1 = nn.LayerNorm(embed_dim)
-        self.norm2 = nn.LayerNorm(embed_dim)
+        if attention_type == 0:
+            # query = obs_self, key & value = all_obs
+            self.query_index = [0]
+            self.source_index = 0
+            output_shape = self.embed_dim
+        elif attention_type == 1 or attention_type == 5:
+            # query = obs_self + obs_other, key & value = all_obs
+            self.query_index = list([0,1,2,3,4,5])
+            self.source_index = 0
+            output_shape = self.embed_dim*6
+        elif attention_type == 2:
+            # query = obs_self, key & value = obs_ball
+            self.query_index = [0]
+            self.source_index = 6
+            output_shape = self.embed_dim*7
+        elif attention_type == 3:
+            # query = obs_self, key & value = obs_other + obs_ball
+            self.query_index = [0]
+            self.source_index = 1
+            output_shape = self.embed_dim*2
+        elif attention_type == 4:
+            # 2 attention module
+            # the first one: query = obs_self, key & value = obs_other
+            # the second one: query = obs_self, key & value = obs_ball
+            self.query_index = [0]
+            self.source_index = 1
+            self.source_index2 = 6
+            output_shape = self.embed_dim*3
+            self.attn2 = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
+        elif attention_type == -1:
+            output_shape = self.embed_dim*7
+        elif attention_type == 6:
+            output_shape = self.embed_dim
+
+        if attention_type != 6:
+            # dim_feedforward = embed_dim
+            self.linear1 = nn.Linear(embed_dim, embed_dim)
+            self.activation = F.gelu
+            self.linear2 = nn.Linear(embed_dim, embed_dim)
+
+            # self.norm_first = norm_first
+            self.norm1 = nn.LayerNorm(embed_dim)
+            self.norm2 = nn.LayerNorm(embed_dim)
+        self.output_shape = torch.Size((output_shape,))
 
     def forward(self, x: Tensor, key_padding_mask: Optional[Tensor] = None):
         """
         Args:
-            x: (batch, N, dim)
+            x: 
+                a tensordict of size (batch, N)
+                e.g. TensorDict(
+                        fields={
+                            attn_obs_ball: Tensor(shape=torch.Size([32, 6, 1, 7]), device=cuda:0, dtype=torch.float32, is_shared=True),
+                            obs_others: Tensor(shape=torch.Size([32, 6, 5, 14]), device=cuda:0, dtype=torch.float32, is_shared=True),
+                            obs_self: Tensor(shape=torch.Size([32, 6, 1, 27]), device=cuda:0, dtype=torch.float32, is_shared=True)},
+                        batch_size=torch.Size([32, 6]),
+                        device=cuda:0,
+                        is_shared=True)
             padding_mask: (batch, N)
         """
-        x = self.split_embed(x)
-        if self.norm_first:
-            x = x[:, self.query_index] + self._pa_block(self.norm1(x), key_padding_mask)
-            x = x + self._ff_block(self.norm2(x))
-        else:
-            x = self.norm1(x[:, self.query_index] + self._pa_block(x, key_padding_mask))
-            x = self.norm2(x + self._ff_block(x))
+        x = self.split_embed(x) # [batch, N, num_entities, embed_dim], e.g. [32, 6, 7, 128]
+        original_shape = x.shape[:-2]
+        x = x.reshape(-1, x.shape[-2], x.shape[-1])
 
-        return x.mean(-2)
+        if self.self_attention:
+            x = self._self_attn(x)
+
+        if self.attention_type != 6:
+            x2 = self.norm1(x)
+
+        if self.attention_type == 2 or self.attention_type == 3:
+            attention_output = x[:, self.query_index] + self._pa_block(x2, key_padding_mask)
+            x = torch.cat([x[:, :self.source_index], attention_output, ], dim=-2)
+        elif self.attention_type == 4:
+            attention_output1 = x[:, self.query_index] + self._pa_block2_1(x2, key_padding_mask)
+            attention_output2 = x[:, self.query_index] + self._pa_block2_2(x2, key_padding_mask)
+            x = torch.cat([x[:, :self.source_index], attention_output1, attention_output2], dim=-2)
+        elif self.attention_type == 5:
+            out_max = torch.zeros_like(x[:, self.query_index])
+            out_sum = torch.zeros_like(x[:, self.query_index])
+            for i in range(6, x2.shape[-2]):
+                x3 = x2[:, [0,1,2,3,4,5,i]]
+                attn_res = self._pa_block(x3, key_padding_mask)
+                out_max = torch.max(out_max, attn_res)
+                out_sum = out_sum + attn_res
+            x = x[:, self.query_index] + out_max # or sum or mean?
+        elif self.attention_type == -1:
+            x_base = x[:, [0,1,2,3,4,5]]
+            out_max = torch.zeros_like(x[:, [0]])
+            out_sum = torch.zeros_like(x[:, [0]])
+            for i in range(6, x2.shape[-2]):
+                out_max = torch.max(out_max, x[:, [i]])
+                out_sum = out_sum + x[:, [i]]
+            x = torch.cat([x_base, out_max], dim=-2)
+        elif self.attention_type == 6:
+            x = self._self_attn(x)
+            x = x.mean(-2)
+        else:
+            x = x[:, self.query_index] + self._pa_block(x2, key_padding_mask) # original implementation
+
+        if self.attention_type != 6:
+            x = x + self._ff_block(self.norm2(x))
+        return x.reshape(*original_shape, -1)
+
+    def _self_attn(self, x):
+        x2 = self.self_norm1(x)
+        x = x + self.self_attn(x2, x2, x2, need_weights=False,)[0]
+        x = x + self.self_linear2(self.self_activation(self.self_linear1(self.self_norm2(x))))
+        return x
 
     def _pa_block(self, x: Tensor, key_padding_mask: Optional[Tensor] = None):
+        # self.attn(query, key, value)
         x = self.attn(
             x[:, self.query_index],
-            x,
-            x,
+            x[:, self.source_index:],
+            x[:, self.source_index:],
+            key_padding_mask=key_padding_mask,
+            need_weights=False,
+        )[0]
+        return x
+
+    def _pa_block2_1(self, x: Tensor, key_padding_mask: Optional[Tensor] = None):
+        x = self.attn(
+            x[:, self.query_index],
+            x[:, self.source_index:self.source_index2],
+            x[:, self.source_index:self.source_index2],
+            key_padding_mask=key_padding_mask,
+            need_weights=False,
+        )[0]
+        return x
+
+    def _pa_block2_2(self, x: Tensor, key_padding_mask: Optional[Tensor] = None):
+        x = self.attn2(
+            x[:, self.query_index],
+            x[:, self.source_index2:],
+            x[:, self.source_index2:],
             key_padding_mask=key_padding_mask,
             need_weights=False,
         )[0]

@@ -114,7 +114,10 @@ def make_encoder(cfg, input_spec: TensorSpec) -> nn.Module:
         # create state encoder
         if len(state_spec_dict) > 0:
             encoder_cls = ENCODERS_MAP[cfg.attn_encoder]
-            state_encoder = encoder_cls(CompositeSpec(state_spec_dict))
+            embed_dim = cfg.get("attention_dim", 128)
+            attention_type = cfg.get("attention_type", 0)
+            self_attention = cfg.get("self_attention", False)
+            state_encoder = encoder_cls(CompositeSpec(state_spec_dict), embed_dim=embed_dim, attention_type=attention_type, self_attention=self_attention)
         else:
             state_encoder = None
             print("No state encoder requried.")
