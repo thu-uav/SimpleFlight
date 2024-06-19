@@ -12,13 +12,15 @@ env:
 random_ball_num: false
 throw_together: false
 ball_num: 1
+static_obs_num: 2
+
 target_height: [0, 0, 1.5]
 target_vel: [0., 2.0, 0.]
 random_ball_speed: false
 ball_speed: 3.0
 max_ball_speed: 5.0
 min_ball_speed: 2.0
-use_separate_obs: false
+use_separate_obs: true # TODO
 use_world_state: false
 use_abs_b_vel: false
 throw_ball_pattern: 1 # 1 for (vx, vy)<-> ball_speed; 2 for (vx, vy, vz)<->ball_speed
@@ -35,9 +37,9 @@ formation_size_coeff: 1.0 # size reward coeff, used in cost_l
 reward_type: 1 # 1 for total reward, 2 for ball reward + drone reward + done reward
 eval: false
 
-static_obs_num: 0
+
 use_top_k_obs: false
-obs_range: 3
+obs_range: 2.5
 top_k: 5
 static_obs_type: 2
 # 1 for static_obs_num * 10 cubes that form static_obs_num columns

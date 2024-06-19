@@ -32,6 +32,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import constraints
 from torch.distributions.utils import lazy_property
+from torch.nn.utils.parametrizations import spectral_norm
 
 D.Distribution.set_default_validate_args(False)
 
@@ -71,8 +72,11 @@ class DiagGaussian(nn.Module):
 
         def init_(m):
             return init(m, init_method, lambda x: nn.init.constant_(x, 0), gain)
+        
+        weight = nn.Linear(num_inputs, num_outputs)
+        # weight = spectral_norm(weight)
 
-        self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
+        self.fc_mean = init_(weight)
         self.log_std = nn.Parameter(torch.zeros(num_outputs))
 
     def forward(self, x):

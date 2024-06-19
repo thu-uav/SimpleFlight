@@ -31,7 +31,7 @@ from tensordict import TensorDict
 
 from torch import Tensor
 from torchrl.data import CompositeSpec, TensorSpec
-
+from torch.nn.utils.parametrizations import spectral_norm
 
 def register(_map: Dict, name=None):
     def decorator(func):
@@ -50,6 +50,7 @@ class MLP(nn.Module):
         normalization: Union[str, nn.Module] = None,
         activation_class: nn.Module = nn.ELU,
         activation_kwargs: Optional[Dict] = None,
+        use_sn = False,
     ):
         super().__init__()
         layers = []
@@ -58,7 +59,10 @@ class MLP(nn.Module):
         if isinstance(normalization, str):
             normalization = getattr(nn, normalization, None)
         for i, (in_dim, out_dim) in enumerate(zip(num_units[:-1], num_units[1:])):
-            layers.append(nn.Linear(in_dim, out_dim))
+            layer = nn.Linear(in_dim, out_dim)
+            if use_sn:
+                layer = spectral_norm(layer)
+            layers.append(layer)
             if i < len(num_units) - 1:
                 layers.append(activation_class())
             if normalization is not None:
@@ -129,18 +133,21 @@ class SplitEmbedding(nn.Module):
         embed_dim: int = 72,
         layer_norm=True,
         embed_type="linear",
+        use_sn=False,
     ) -> None:
         super().__init__()
         if any(isinstance(spec, CompositeSpec) for spec in input_spec.values()):
             raise ValueError("Nesting is not supported.")
-        self.input_spec = input_spec
+        self.input_spec = {k: v for k, v in input_spec.items() if not k.endswith("mask")}
         self.embed_dim = embed_dim
         self.num_entities = sum(spec.shape[-2] for spec in self.input_spec.values())
 
         if embed_type == "linear":
             self.embed = nn.ModuleDict(
                 {
-                    key: nn.Linear(value.shape[-1], self.embed_dim)
+                    key: 
+                        spectral_norm(nn.Linear(value.shape[-1], self.embed_dim)) if use_sn 
+                        else nn.Linear(value.shape[-1], self.embed_dim)
                     for key, value in self.input_spec.items()
                 }
             )
@@ -152,6 +159,7 @@ class SplitEmbedding(nn.Module):
             # self.layer_norm = nn.LayerNorm(
             #     (self.num_entities, embed_dim)
             # )  # somehow faster
+        # print(input_spec)
 
     def forward(self, tensordict: TensorDict):
         embeddings = torch.cat(
@@ -219,10 +227,11 @@ class PartialRelationEncoder(nn.Module):
         embed_type: str = "linear",
         layer_norm=True,
         f_units=(256, 128),
+        use_sn=False
     ) -> None:
         super().__init__()
         self.output_shape = torch.Size((f_units[-1],))
-        self.split_embed = SplitEmbedding(input_spec, embed_dim, layer_norm, embed_type)
+        self.split_embed = SplitEmbedding(input_spec, embed_dim, layer_norm, embed_type, use_sn=use_sn)
         if layer_norm:
             self.g = nn.Sequential(
                 MLP([embed_dim * 2, f_units[0]]), nn.LayerNorm(f_units[0])
@@ -259,19 +268,20 @@ class PartialAttentionEncoder(nn.Module):
         norm_first=False,
         attention_type=0,
         self_attention=False,
+        use_sn=False,
     ) -> None:
         super().__init__()
         self.embed_dim = embed_dim
-        self.split_embed = SplitEmbedding(input_spec, embed_dim, layer_norm, embed_type)
+        self.split_embed = SplitEmbedding(input_spec, embed_dim, layer_norm, embed_type, use_sn=use_sn)
         self.attention_type = attention_type
         self.self_attention = self_attention
         if self_attention:
             self.self_attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
             self.self_norm1 = nn.LayerNorm(embed_dim)
             self.self_norm2 = nn.LayerNorm(embed_dim)
-            self.self_linear1 = nn.Linear(embed_dim, embed_dim)
+            self.self_linear1 = spectral_norm(nn.Linear(embed_dim, embed_dim)) if use_sn else nn.Linear(embed_dim, embed_dim)
             self.self_activation = F.gelu
-            self.self_linear2 = nn.Linear(embed_dim, embed_dim)
+            self.self_linear2 = spectral_norm(nn.Linear(embed_dim, embed_dim)) if use_sn else nn.Linear(embed_dim, embed_dim)
 
         if attention_type != -1 and attention_type != 6:
             # no attention, directly calculate the max or mean of all ball information
@@ -322,7 +332,9 @@ class PartialAttentionEncoder(nn.Module):
             self.norm2 = nn.LayerNorm(embed_dim)
         self.output_shape = torch.Size((output_shape,))
 
-    def forward(self, x: Tensor, key_padding_mask: Optional[Tensor] = None):
+    def forward(self, obs: Tensor, 
+                # key_padding_mask: Optional[Tensor] = None
+                ):
         """
         Args:
             x: 
@@ -337,13 +349,29 @@ class PartialAttentionEncoder(nn.Module):
                         is_shared=True)
             padding_mask: (batch, N)
         """
-        x = self.split_embed(x) # [batch, N, num_entities, embed_dim], e.g. [32, 6, 7, 128]
+
+        x = self.split_embed(obs) # [batch, N, num_entities, embed_dim], for actor; e.g. [32, 6, 7, 128]; [bsz, num_entities, embed_dim] for critic
+        key_padding_mask = None
+        
+        if "attn_ball_mask" in obs.keys() and "attn_static_mask" in obs.keys():
+            # [bsz, N, ball_num] or [bsz, ball_num]
+            ball_mask = obs["attn_ball_mask"]
+            static_mask = obs["attn_static_mask"]
+            self_mask = torch.zeros(obs["obs_self"].shape[:-1], dtype=bool, device=ball_mask.device)
+            others_mask = torch.zeros(obs["obs_others"].shape[:-1], dtype=bool, device=ball_mask.device)
+            
+            mask = torch.cat([self_mask, others_mask, ball_mask, static_mask], dim=-1)
+            # print("mask.shape =", mask.shape)
+            key_padding_mask = mask.reshape(-1, mask.shape[-1]) #[batch*N, num_entities]
+        # print(key_padding_mask)
         original_shape = x.shape[:-2]
-        x = x.reshape(-1, x.shape[-2], x.shape[-1])
+
+        x = x.reshape(-1, x.shape[-2], x.shape[-1]) # [bsz*N, num_entities, embed_dim]
+        if key_padding_mask is not None:
+            x -= key_padding_mask.unsqueeze(-1)*x
 
         if self.self_attention:
-            x = self._self_attn(x)
-
+            x = self._self_attn(x, key_padding_mask)
         if self.attention_type != 6:
             x2 = self.norm1(x)
 
@@ -372,23 +400,27 @@ class PartialAttentionEncoder(nn.Module):
                 out_sum = out_sum + x[:, [i]]
             x = torch.cat([x_base, out_max], dim=-2)
         elif self.attention_type == 6:
-            x = self._self_attn(x)
+            x = self._self_attn(x, key_padding_mask)
             x = x.mean(-2)
         else:
             x = x[:, self.query_index] + self._pa_block(x2, key_padding_mask) # original implementation
 
+        # print('cross_attn', x[0][0])
         if self.attention_type != 6:
             x = x + self._ff_block(self.norm2(x))
+        # print('final',x.reshape(*original_shape, -1)[0][0])
         return x.reshape(*original_shape, -1)
 
-    def _self_attn(self, x):
+    def _self_attn(self, x, key_padding_mask = None):
         x2 = self.self_norm1(x)
-        x = x + self.self_attn(x2, x2, x2, need_weights=False,)[0]
+        x = x + self.self_attn(x2, x2, x2, key_padding_mask, need_weights=False,)[0]
         x = x + self.self_linear2(self.self_activation(self.self_linear1(self.self_norm2(x))))
         return x
 
     def _pa_block(self, x: Tensor, key_padding_mask: Optional[Tensor] = None):
         # self.attn(query, key, value)
+        if key_padding_mask is not None:
+            key_padding_mask=key_padding_mask[:, self.source_index:]
         x = self.attn(
             x[:, self.query_index],
             x[:, self.source_index:],
@@ -399,6 +431,8 @@ class PartialAttentionEncoder(nn.Module):
         return x
 
     def _pa_block2_1(self, x: Tensor, key_padding_mask: Optional[Tensor] = None):
+        if key_padding_mask is not None:
+            key_padding_mask=key_padding_mask[:, self.source_index:self.source_index2]
         x = self.attn(
             x[:, self.query_index],
             x[:, self.source_index:self.source_index2],
@@ -409,6 +443,8 @@ class PartialAttentionEncoder(nn.Module):
         return x
 
     def _pa_block2_2(self, x: Tensor, key_padding_mask: Optional[Tensor] = None):
+        if key_padding_mask is not None:
+            key_padding_mask=key_padding_mask[:, self.source_index2:]
         x = self.attn2(
             x[:, self.query_index],
             x[:, self.source_index2:],
