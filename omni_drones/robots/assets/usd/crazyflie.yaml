@@ -17,7 +17,7 @@ inertia:
   zz: 2.17e-5
 mass: 0.03 # cf13: 0.0321, cf11:0.0308, cf12: 0.0307
 l: 0.096
-drag_coef: 0.2
+drag_coef: 0.0
 rotor_configuration:
   arm_lengths:
   - 0.043

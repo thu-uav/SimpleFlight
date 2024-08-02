@@ -506,6 +506,7 @@ class MultirotorBase(RobotBase):
         self.throttle_difference[:] = torch.norm(self.throttle - last_throttle, dim=-1)
         return self.throttle.sum(-1)
 
+    # for residual model
     def apply_action_output(self, actions: torch.Tensor) -> torch.Tensor:
         rotor_cmds = actions.expand(*self.shape, self.num_rotors)
         last_throttle = self.throttle.clone()
@@ -555,9 +556,6 @@ class MultirotorBase(RobotBase):
         thrusts, moments = vmap(vmap(self.rotors, randomness="different"), randomness="same")(
             rotor_cmds, self.rotor_params
         )
-        # add res
-        thrusts = thrusts + residual[..., :4]
-        moments = moments + residual[..., 4:]
 
         rotor_pos, rotor_rot = self.rotors_view.get_world_poses()
         torque_axis = quat_axis(rotor_rot.flatten(end_dim=-2), axis=2).unflatten(0, (*self.shape, self.num_rotors))
@@ -587,9 +585,10 @@ class MultirotorBase(RobotBase):
             positions=self.rotor_pos_offset,
             is_global=False
         )
+        
         self.base_link.apply_forces_and_torques_at_pos(
-            self.forces.reshape(-1, 3), 
-            self.torques.reshape(-1, 3), 
+            self.forces.reshape(-1, 3) + residual[..., :3], 
+            self.torques.reshape(-1, 3) + residual[..., 3:], 
             is_global=True
         )
         self.throttle_difference[:] = torch.norm(self.throttle - last_throttle, dim=-1)
