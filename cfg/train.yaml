@@ -5,8 +5,8 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_smooth02_simopt1/07-03_21-33/wandb/run-20240703_213310-51gcndtt/files/checkpoint_final.pt
-# model_dir: null
+# model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_smooth02_simopt1/07-03_21-33/wandb/run-20240703_213310-51gcndtt/files/checkpoint_final.pt
+model_dir: null
 
 total_frames: 3000_000_000 #1000_000_000
 max_iters: -1
@@ -25,13 +25,13 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_smooth02_simopt1_eval
-  # run_name: debug
+  # run_name: Track_smooth02_simopt1_eval
+  run_name: debug
   job_type: train
   entity: chenjy
   project: simpleflight
-  # mode: disabled
-  mode: online # set to 'disabled' when debugging locally, online
+  mode: disabled
+  # mode: online # set to 'disabled' when debugging locally, online
   run_id: 
   monitor_gym: True
   tags: 

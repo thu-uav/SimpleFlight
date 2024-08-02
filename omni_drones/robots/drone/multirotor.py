@@ -259,7 +259,7 @@ class MultirotorBase(RobotBase):
         
         logging.info(str(self))
 
-        self.drag_coef = torch.zeros(*self.shape, 1, device=self.device) * self.drag_coef_para
+        self.drag_coef = torch.ones(*self.shape, 1, device=self.device) * self.drag_coef_para
         self.intrinsics = self.intrinsics_spec.expand(self.shape).zero()
 
     # for simopt, set the rotor config
