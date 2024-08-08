@@ -15,7 +15,7 @@ inertia:
   yy: 1.4e-5
   yz: 0.0
   zz: 2.17e-5
-mass: 0.03 # cf13: 0.0321, cf11:0.0308, cf12: 0.0307
+mass: 0.03
 l: 0.096
 drag_coef: 0.0
 rotor_configuration:
@@ -54,7 +54,7 @@ rotor_configuration:
   - 3.92699082
   - 5.49778714
   # time_constant: 0.025 # 0.4, DATT, tau = dt / time_constant
-  time_constant: 0.02618507955424977 # simopt1
+  time_constant: 0.02618507955424977
 controller_configuration: # invalid
   gain:
   - 0.0052

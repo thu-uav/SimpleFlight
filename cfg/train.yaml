@@ -25,13 +25,13 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  # run_name: Track_smooth02_simopt1_eval
-  run_name: debug
+  run_name: Track_smooth0_opt_woactionhistory_worotor2critic
+  # run_name: debug
   job_type: train
   entity: chenjy
   project: simpleflight
-  mode: disabled
-  # mode: online # set to 'disabled' when debugging locally, online
+  # mode: disabled
+  mode: online # set to 'disabled' when debugging locally, online
   run_id: 
   monitor_gym: True
   tags: 

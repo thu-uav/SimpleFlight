@@ -101,6 +101,8 @@ class Track(IsaacEnv):
         self.wind = cfg.task.wind
         self.use_eval = cfg.task.use_eval
         self.num_drones = 1
+        self.use_rotor2critic = cfg.task.use_rotor2critic
+        self.action_history_step = cfg.task.action_history_step
 
         super().__init__(cfg, headless)
 
@@ -210,9 +212,17 @@ class Track(IsaacEnv):
         if self.intrinsics:
             obs_dim += sum(spec.shape[-1] for name, spec in self.drone.info_spec.items())
         
+        # action history
+        self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
+        self.action_history_buffer = collections.deque(maxlen=self.action_history)
+
+        if self.action_history > 0:
+            obs_dim += self.action_history * 4
+        
         self.observation_spec = CompositeSpec({
             "agents": {
-                "observation": UnboundedContinuousTensorSpec((1, obs_dim))
+                "observation": UnboundedContinuousTensorSpec((1, obs_dim)),
+                "state": UnboundedContinuousTensorSpec((obs_dim + 4)), # add motor speed
             }
         }).expand(self.num_envs).to(self.device)
         self.action_spec = CompositeSpec({
@@ -230,6 +240,7 @@ class Track(IsaacEnv):
             observation_key=("agents", "observation"),
             action_key=("agents", "action"),
             reward_key=("agents", "reward"),
+            state_key=("agents", "state"),
         )
         stats_spec = CompositeSpec({
             "return": UnboundedContinuousTensorSpec(1),
@@ -274,7 +285,7 @@ class Track(IsaacEnv):
         self.latency = self.cfg.task.latency_step if self.cfg.task.latency else 0
         # self.obs_buffer = collections.deque(maxlen=self.latency)
         self.root_state_buffer = collections.deque(maxlen=self.latency)
-
+        
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
         self.traj_rot[env_ids] = euler_to_quaternion(self.traj_rpy_dist.sample(env_ids.shape))
@@ -312,6 +323,10 @@ class Track(IsaacEnv):
         self.info['prev_prev_action'][env_ids, :, 3] = (0.5 * (max_thrust_ratio + cmd_init)).mean(dim=-1)
         self.prev_actions[env_ids] = self.info['prev_action'][env_ids]
         self.prev_prev_actions[env_ids] = self.info['prev_prev_action'][env_ids]
+        
+        # add init_action to self.action_history_buffer
+        for _ in range(self.action_history):
+            self.action_history_buffer.append(self.prev_actions) # add all prev_actions, not len(env_ids)
         
         if self._should_render(0) and (env_ids == self.central_env_idx).any() :
             # visualize the trajectory
@@ -414,10 +429,23 @@ class Track(IsaacEnv):
         self.last_angular_jerk = self.angular_jerk.clone()
         
         obs = torch.cat(obs, dim=-1)
+        
+        # add throttle to critic
+        if self.use_rotor2critic:
+            state = torch.concat([obs, self.drone.throttle]).squeeze(1)
+        else:
+            state = obs.squeeze(1)
+        
+        # add action history to actor
+        if self.action_history > 0:
+            self.action_history_buffer.append(self.prev_actions)
+            all_action_history = torch.concat(list(self.action_history_buffer), dim=-1)
+            obs = torch.cat([obs, all_action_history], dim=-1)
 
         return TensorDict({
             "agents": {
                 "observation": obs,
+                "state": state,
             },
             "stats": self.stats,  
             "info": self.info
