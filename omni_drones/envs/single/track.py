@@ -432,7 +432,7 @@ class Track(IsaacEnv):
         
         # add throttle to critic
         if self.use_rotor2critic:
-            state = torch.concat([obs, self.drone.throttle]).squeeze(1)
+            state = torch.concat([obs, self.drone.throttle], dim=-1).squeeze(1)
         else:
             state = obs.squeeze(1)
         

@@ -23,7 +23,7 @@ future_traj_steps: 4
 
 use_eval: 0
 use_action_error_order2: 0
-use_rotor2critic: 0 # need to set critic_input = 'state'
+use_rotor2critic: 1 # need to set critic_input = 'state'
 use_action_history: false
 action_history_step: 5
 reward_action_smoothness_weight: 0.0
