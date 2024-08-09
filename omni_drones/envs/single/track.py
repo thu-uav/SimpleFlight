@@ -36,7 +36,7 @@ from tensordict.tensordict import TensorDict, TensorDictBase
 from torchrl.data import UnboundedContinuousTensorSpec, CompositeSpec
 from omni.isaac.debug_draw import _debug_draw
 
-from ..utils import lemniscate, pentagram, scale_time
+from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
 import collections
 import numpy as np
 
@@ -134,13 +134,18 @@ class Track(IsaacEnv):
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
             torch.tensor([0., 0., 2.], device=self.device) * torch.pi
         )
-        self.traj_c_dist = D.Uniform(
-            torch.tensor(-0.6, device=self.device),
-            torch.tensor(0.6, device=self.device)
-        )
-        self.traj_scale_dist = D.Uniform(
-            torch.tensor([0.5, 0.5, 0.25], device=self.device),
-            torch.tensor([1.2, 1.2, 0.25], device=self.device)
+        # self.traj_c_dist = D.Uniform(
+        #     torch.tensor(-0.6, device=self.device),
+        #     torch.tensor(0.6, device=self.device)
+        # )
+        # self.traj_scale_dist = D.Uniform(
+        #     torch.tensor([0.5, 0.5, 0.25], device=self.device),
+        #     torch.tensor([1.2, 1.2, 0.25], device=self.device)
+        # )
+
+        self.v_scale_dist = D.Uniform(
+            torch.tensor(0.5, device=self.device),
+            torch.tensor(2.2, device=self.device)
         )
         
         # eval
@@ -153,24 +158,25 @@ class Track(IsaacEnv):
                 torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
                 torch.tensor([0., 0., 0.], device=self.device) * torch.pi
             )
-            self.traj_scale_dist = D.Uniform(
-                torch.tensor([1.2, 1.2, 0.25], device=self.device),
-                torch.tensor([1.2, 1.2, 0.25], device=self.device)
-            )
             # self.traj_scale_dist = D.Uniform(
-            #     torch.tensor([0.5, 0.5, 0.25], device=self.device),
-            #     torch.tensor([0.5, 0.5, 0.25], device=self.device)
+            #     torch.tensor([1.2, 1.2, 0.25], device=self.device),
+            #     torch.tensor([1.2, 1.2, 0.25], device=self.device)
             # )
-            self.traj_c_dist = D.Uniform(
-                torch.tensor(0.0, device=self.device),
-                torch.tensor(0.0, device=self.device)
-            )
+            self.v_scale_dist = D.Uniform(
+                torch.tensor(1.0, device=self.device),
+                torch.tensor(1.0, device=self.device)
+                )
+            # self.traj_c_dist = D.Uniform(
+            #     torch.tensor(0.0, device=self.device),
+            #     torch.tensor(0.0, device=self.device)
+            # )
         
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
 
         self.traj_t0 = torch.pi / 2.0
-        self.traj_c = torch.zeros(self.num_envs, device=self.device)
-        self.traj_scale = torch.zeros(self.num_envs, 3, device=self.device)
+        # self.traj_c = torch.zeros(self.num_envs, device=self.device)
+        # self.traj_scale = torch.zeros(self.num_envs, 3, device=self.device)
+        self.v_scale = torch.zeros(self.num_envs, device=self.device)
         self.traj_rot = torch.zeros(self.num_envs, 4, device=self.device)
 
         self.last_linear_v = torch.zeros(self.num_envs, 1, device=self.device)
@@ -289,16 +295,17 @@ class Track(IsaacEnv):
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
         self.traj_rot[env_ids] = euler_to_quaternion(self.traj_rpy_dist.sample(env_ids.shape))
-        self.traj_scale[env_ids] = self.traj_scale_dist.sample(env_ids.shape)
+        # self.traj_scale[env_ids] = self.traj_scale_dist.sample(env_ids.shape)
+        self.v_scale[env_ids] = self.v_scale_dist.sample(env_ids.shape)
 
         t0 = torch.zeros(len(env_ids), device=self.device)
-        # pos = lemniscate(t0 + self.traj_t0, self.traj_c[env_ids]) + self.origin
-        pos, linear_v = lemniscate(t0 + self.traj_t0, self.traj_c[env_ids])
+        # pos, _ = lemniscate(t0 + self.traj_t0, self.traj_c[env_ids])
+        # pos, _ = lemniscate(t0 + self.traj_t0)
+        pos = lemniscate_v(t0 + self.traj_t0, self.v_scale[env_ids])
         pos = pos + self.origin
         if self.use_eval:
             pos = torch.zeros(len(env_ids), 3, device=self.device)
             pos = pos + self.origin
-        # linear_v = linear_v * self.traj_scale[env_ids]
         rot = euler_to_quaternion(self.init_rpy_dist.sample(env_ids.shape))
         vel = torch.zeros(len(env_ids), 1, 6, device=self.device)
         # vel[..., :3] = linear_v.unsqueeze(1)
@@ -544,8 +551,11 @@ class Track(IsaacEnv):
         t = self.traj_t0 + scale_time(t * self.dt)
         traj_rot = self.traj_rot[env_ids].unsqueeze(1).expand(-1, t.shape[1], 4)
         
-        target_pos, _ = vmap(lemniscate)(t, self.traj_c[env_ids])
-        target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos) * self.traj_scale[env_ids].unsqueeze(1)
+        # target_pos = vmap(lemniscate)(t)
+        # breakpoint()
+        target_pos = vmap(lemniscate_v)(t, self.v_scale[env_ids].unsqueeze(-1))
+        # target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos) * self.traj_scale[env_ids].unsqueeze(1)
+        target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos)
 
         return self.origin + target_pos
 

@@ -37,7 +37,7 @@ class RotorGroup(nn.Module):
         self.dt = dt
         self.time_up = 0.15
         self.time_down = 0.15
-        self.noise_scale = 0.002
+        self.noise_scale = torch.as_tensor(rotor_config["noise_scale"])
 
         self.KF = nn.Parameter(max_rot_vels.square() * force_constants)
         self.KM = nn.Parameter(max_rot_vels.square() * moment_constants)
@@ -62,8 +62,8 @@ class RotorGroup(nn.Module):
         # throttle(t + dt) = throttle(t) * (1 - tau) + target_throttle * tau
         self.throttle.add_(tau * (target_throttle - self.throttle))
 
-        noise = torch.randn_like(self.throttle) * self.noise_scale * 0.
-        t = torch.clamp(self.f(self.throttle) + noise, 0., 1.)
+        self.noise = torch.randn_like(self.throttle) * self.noise_scale
+        t = torch.clamp(self.f(self.throttle) + self.noise, 0., 1.)
         thrusts = t * self.KF
         moments = (t * self.KM) * -self.directions
 

@@ -456,12 +456,7 @@ class PIDRateController(nn.Module):
         self.target_clip = uav_params['target_clip']
         self.max_thrust_ratio = uav_params['max_thrust_ratio']
         self.fixed_yaw = uav_params['fixed_yaw']
-        
-        # for action smooth
-        self.use_action_smooth = uav_params['use_action_smooth']
-        self.use_cbf = uav_params['use_cbf']
-        self.epsilon = uav_params['epsilon']
-        
+                
         self.init_flag = True # init last_body_rate and inte
 
     def set_byTunablePara(

@@ -4,10 +4,6 @@ name: crazyflie
 target_clip: 1.0
 max_thrust_ratio: 0.9
 fixed_yaw: 0
-use_cbf: 0
-use_action_smooth: 0
-epsilon: 0.01 # action smooth
-# epsilon: null
 inertia:
   xx: 1.4e-5
   xy: 0.0
@@ -55,6 +51,7 @@ rotor_configuration:
   - 5.49778714
   # time_constant: 0.025 # 0.4, DATT, tau = dt / time_constant
   time_constant: 0.02618507955424977
+  noise_scale: 0.0 # default: 2% noise for rotor speed
 controller_configuration: # invalid
   gain:
   - 0.0052

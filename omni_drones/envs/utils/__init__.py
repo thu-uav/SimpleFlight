@@ -169,23 +169,28 @@ def create_bar(
     return bar
         
 
-def lemniscate(t, c):
+def lemniscate(t):
     sin_t = torch.sin(t)
     cos_t = torch.cos(t)
     sin2p1 = torch.square(sin_t) + 1
 
     x = torch.stack([
-        cos_t, sin_t * cos_t, c * sin_t
+        cos_t, sin_t * cos_t, sin_t
     ], dim=-1) / sin2p1.unsqueeze(-1)
     
-    v_x = - sin_t * (3 - torch.square(sin_t)) / (torch.square(sin_t) + 1)**2
-    v_y = (cos_t**2 - sin_t**2 - sin_t**4 - sin_t**2 * cos_t**2) / (torch.square(sin_t) + 1)**2
-    v_z = cos_t * (1 - torch.square(sin_t)) / (torch.square(sin_t) + 1)**2
-    v = torch.stack([
-        v_x, v_y, v_z
-    ], dim=-1)
+    return x
+
+def lemniscate_v(t, k):
+    t = k * t
+    sin_t = torch.sin(t)
+    cos_t = torch.cos(t)
+    sin2p1 = torch.square(sin_t) + 1
+
+    x = torch.stack([
+        cos_t, sin_t * cos_t, sin_t
+    ], dim=-1) / sin2p1.unsqueeze(-1)
     
-    return x, v
+    return x
 
 def line_acc(t, a, threshold, alpha):
     # Convert angle c from degrees to radians
