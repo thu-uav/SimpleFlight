@@ -5,7 +5,7 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_smooth0_opt_woactionhistory_withrotor2critic/08-08_22-19/wandb/run-20240808_221934-qbbj6oqt/files/checkpoint_final.pt
+# model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_v_smooth2_opt_withactionhistory_withrotor2critic/08-10_21-22/wandb/run-20240810_212301-9fu9n61o/files/checkpoint_final.pt
 model_dir: null
 
 total_frames: 3000_000_000 #1000_000_000
@@ -25,7 +25,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_v_smooth0_opt_withactionhistory_withrotor2critic
+  run_name: Track_v_range2to2_2_smooth5
   # run_name: debug
   job_type: train
   entity: chenjy

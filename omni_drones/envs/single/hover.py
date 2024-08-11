@@ -14,6 +14,7 @@ from omni_drones.utils.torch import euler_to_quaternion, quat_axis, quat_rotate_
 from tensordict.tensordict import TensorDict, TensorDictBase
 from torchrl.data import UnboundedContinuousTensorSpec, CompositeSpec
 import collections
+from torch.distributions import Normal
 
 def attach_payload(parent_path):
     from omni.isaac.core import objects
@@ -35,7 +36,6 @@ def attach_payload(parent_path):
     joint.GetAttribute("physics:axis").Set("Z")
     joint.GetAttribute("drive:linear:physics:damping").Set(10.)
     joint.GetAttribute("drive:linear:physics:stiffness").Set(10000.)
-
 
 class Hover(IsaacEnv):
     r"""
@@ -87,6 +87,8 @@ class Hover(IsaacEnv):
         self.time_encoding = cfg.task.time_encoding
         self.use_acc = cfg.task.use_acc
         self.use_jerk = cfg.task.use_jerk
+        self.use_eval = cfg.task.use_eval
+        self.use_disturbance = cfg.task.use_disturbance
         
         self.randomization = cfg.task.get("randomization", {})
         self.has_payload = "payload" in self.randomization.keys()
@@ -121,19 +123,10 @@ class Hover(IsaacEnv):
         self.init_poses = self.drone.get_world_poses(clone=True)
         self.init_vels = torch.zeros_like(self.drone.get_velocities())
 
-        # # eval
-        # self.init_pos_dist = D.Uniform(
-        #     torch.tensor([0.0, 0.0, 0.05], device=self.device),
-        #     torch.tensor([0.0, 0.0, 0.05], device=self.device)
-        # )
         self.init_pos_dist = D.Uniform(
             torch.tensor([-1., -1., 0.05], device=self.device),
             torch.tensor([1., 1., 2.0], device=self.device)
         )
-        # self.init_rpy_dist = D.Uniform(
-        #     torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi,
-        #     torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi
-        # )
         self.init_rpy_dist = D.Uniform(
             torch.tensor([-0.2, -0.2, 0.0], device=self.device) * torch.pi,
             torch.tensor([0.2, 0.2, 0.5], device=self.device) * torch.pi
@@ -142,10 +135,26 @@ class Hover(IsaacEnv):
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi
         )
+        
+        self.force_disturbance_dist = Normal(0.0, 0.03 * 9.81 / 20)
+        self.torques_disturbance_dist = Normal(0.0, 0.03 * 9.81 / 10000)
+        
+        if self.use_eval:
+            self.init_pos_dist = D.Uniform(
+                torch.tensor([0.0, 0.0, 0.05], device=self.device),
+                torch.tensor([0.0, 0.0, 0.05], device=self.device)
+            )
+            self.init_rpy_dist = D.Uniform(
+                torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi,
+                torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi
+            )
 
         self.target_pos = torch.tensor([[0.0, 0.0, 1.]], device=self.device)
         self.target_heading = torch.zeros(self.num_envs, 1, 3, device=self.device)
         self.alpha = 0.8
+        
+        self.force_disturbance = torch.zeros(self.num_envs, 3, device=self.device)
+        self.torques_disturbance = torch.zeros(self.num_envs, 3, device=self.device)
 
         self.last_linear_v = torch.zeros(self.num_envs, 1, device=self.device)
         self.last_angular_v = torch.zeros(self.num_envs, 1, device=self.device)
@@ -289,6 +298,9 @@ class Hover(IsaacEnv):
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids, self.training)
         
+        self.force_disturbance[env_ids] = self.force_disturbance_dist.sample((*env_ids.shape, 3))
+        self.torques_disturbance[env_ids] = self.torques_disturbance_dist.sample((*env_ids.shape, 3))
+        
         pos = self.init_pos_dist.sample((*env_ids.shape, 1))
         rpy = self.init_rpy_dist.sample((*env_ids.shape, 1))
         rot = euler_to_quaternion(rpy)
@@ -343,7 +355,11 @@ class Hover(IsaacEnv):
         self.stats['motor3'].set_(actions[..., 2])
         self.stats['motor4'].set_(actions[..., 3])
         
-        self.effort = self.drone.apply_action(actions)
+        if self.use_disturbance:
+            disturbance = torch.concat([self.force_disturbance, self.torques_disturbance_dist], dim=-1)
+            self.effort = self.drone.apply_action_disturbance(actions, disturbance)
+        else:
+            self.effort = self.drone.apply_action(actions)
         
         # log ctbr
         ctbr = tensordict['ctbr']

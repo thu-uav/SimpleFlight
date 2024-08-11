@@ -144,7 +144,7 @@ class Track(IsaacEnv):
         # )
 
         self.v_scale_dist = D.Uniform(
-            torch.tensor(0.5, device=self.device),
+            torch.tensor(2.0, device=self.device),
             torch.tensor(2.2, device=self.device)
         )
         
@@ -163,8 +163,8 @@ class Track(IsaacEnv):
             #     torch.tensor([1.2, 1.2, 0.25], device=self.device)
             # )
             self.v_scale_dist = D.Uniform(
-                torch.tensor(1.0, device=self.device),
-                torch.tensor(1.0, device=self.device)
+                torch.tensor(2.0, device=self.device),
+                torch.tensor(2.0, device=self.device)
                 )
             # self.traj_c_dist = D.Uniform(
             #     torch.tensor(0.0, device=self.device),
@@ -222,13 +222,15 @@ class Track(IsaacEnv):
         self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
         self.action_history_buffer = collections.deque(maxlen=self.action_history)
 
+        state_dim = obs_dim + 4
+        
         if self.action_history > 0:
             obs_dim += self.action_history * 4
         
         self.observation_spec = CompositeSpec({
             "agents": {
                 "observation": UnboundedContinuousTensorSpec((1, obs_dim)),
-                "state": UnboundedContinuousTensorSpec((obs_dim + 4)), # add motor speed
+                "state": UnboundedContinuousTensorSpec((state_dim)), # add motor speed
             }
         }).expand(self.num_envs).to(self.device)
         self.action_spec = CompositeSpec({
@@ -261,6 +263,7 @@ class Track(IsaacEnv):
             "smoothness_max": UnboundedContinuousTensorSpec(1),
             "drone_state": UnboundedContinuousTensorSpec(13),
             "reward_pos": UnboundedContinuousTensorSpec(1),
+            "reward_up": UnboundedContinuousTensorSpec(1),
             "reward_spin": UnboundedContinuousTensorSpec(1),
             "reward_action_smoothness": UnboundedContinuousTensorSpec(1),
             "linear_v_max": UnboundedContinuousTensorSpec(1),
@@ -303,9 +306,9 @@ class Track(IsaacEnv):
         # pos, _ = lemniscate(t0 + self.traj_t0)
         pos = lemniscate_v(t0 + self.traj_t0, self.v_scale[env_ids])
         pos = pos + self.origin
-        if self.use_eval:
-            pos = torch.zeros(len(env_ids), 3, device=self.device)
-            pos = pos + self.origin
+        # if self.use_eval:
+        #     pos = torch.zeros(len(env_ids), 3, device=self.device)
+        #     pos = pos + self.origin
         rot = euler_to_quaternion(self.init_rpy_dist.sample(env_ids.shape))
         vel = torch.zeros(len(env_ids), 1, 6, device=self.device)
         # vel[..., :3] = linear_v.unsqueeze(1)
@@ -478,18 +481,17 @@ class Track(IsaacEnv):
         # spin reward, fixed z
         spin = torch.square(self.drone.vel[..., -1])
         reward_spin = 0.5 / (1.0 + torch.square(spin))
-        # reward_spin = torch.exp(-torch.square(spin))
 
         reward = (
             reward_pos
             + reward_pos * (reward_up + reward_spin)
-            # + reward_spin
             + reward_action_smoothness
         )
         
         self.stats['reward_pos'].add_(reward_pos)
         self.stats['reward_action_smoothness'].add_(reward_action_smoothness)
-        self.stats['reward_spin'].add_(reward_spin)
+        self.stats['reward_spin'].add_(reward_pos * reward_spin)
+        self.stats['reward_up'].add_(reward_pos * reward_up)
 
         done = (
             (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
@@ -514,6 +516,9 @@ class Track(IsaacEnv):
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats['reward_spin'].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats['reward_up'].div_(
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats['reward_action_smoothness'].div_(
