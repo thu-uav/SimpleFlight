@@ -286,7 +286,7 @@ class Track(IsaacEnv):
         info_spec = CompositeSpec({
             "drone_state": UnboundedContinuousTensorSpec((self.drone.n, 13), device=self.device),
             "prev_action": torch.stack([self.drone.action_spec] * self.drone.n, 0).to(self.device),
-            "prev_prev_action": torch.stack([self.drone.action_spec] * self.drone.n, 0).to(self.device),
+            # "prev_prev_action": torch.stack([self.drone.action_spec] * self.drone.n, 0).to(self.device),
         }).expand(self.num_envs).to(self.device)
         # info_spec = self.drone.info_spec.to(self.device)
         self.observation_spec["info"] = info_spec
@@ -334,7 +334,7 @@ class Track(IsaacEnv):
         cmd_init = 2.0 * (self.drone.throttle[env_ids]) ** 2 - 1.0
         max_thrust_ratio = self.drone.params['max_thrust_ratio']
         self.info['prev_action'][env_ids, :, 3] = (0.5 * (max_thrust_ratio + cmd_init)).mean(dim=-1)
-        self.info['prev_prev_action'][env_ids, :, 3] = (0.5 * (max_thrust_ratio + cmd_init)).mean(dim=-1)
+        # self.info['prev_prev_action'][env_ids, :, 3] = (0.5 * (max_thrust_ratio + cmd_init)).mean(dim=-1)
         self.prev_actions[env_ids] = self.info['prev_action'][env_ids]
         # self.prev_prev_actions[env_ids] = self.info['prev_prev_action'][env_ids]
         
@@ -361,7 +361,7 @@ class Track(IsaacEnv):
     def _pre_sim_step(self, tensordict: TensorDictBase):
         actions = tensordict[("agents", "action")]
         self.info["prev_action"] = tensordict[("info", "prev_action")]
-        self.info["prev_prev_action"] = tensordict[("info", "prev_prev_action")]
+        # self.info["prev_prev_action"] = tensordict[("info", "prev_prev_action")]
         self.prev_actions = self.info["prev_action"].clone()
         # self.prev_prev_actions = self.info["prev_prev_action"].clone()
         
