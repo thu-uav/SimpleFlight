@@ -40,7 +40,7 @@ from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
 import collections
 import numpy as np
 
-class Track(IsaacEnv):
+class Rotate(IsaacEnv):
     r"""
     A basic control task. The goal for the agent is to track a reference 
     lemniscate trajectory in the 3D space.
@@ -561,7 +561,6 @@ class Track(IsaacEnv):
         traj_rot = self.traj_rot[env_ids].unsqueeze(1).expand(-1, t.shape[1], 4)
         
         # target_pos = vmap(lemniscate)(t)
-        # breakpoint()
         target_pos = vmap(lemniscate_v)(t, self.v_scale[env_ids].unsqueeze(-1))
         # target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos) * self.traj_scale[env_ids].unsqueeze(1)
         target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos)

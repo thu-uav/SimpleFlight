@@ -85,8 +85,6 @@ class Hover(IsaacEnv):
         self.linear_vel_max = cfg.task.linear_vel_max
         self.linear_acc_max = cfg.task.linear_acc_max
         self.time_encoding = cfg.task.time_encoding
-        self.use_acc = cfg.task.use_acc
-        self.use_jerk = cfg.task.use_jerk
         self.use_eval = cfg.task.use_eval
         self.use_disturbance = cfg.task.use_disturbance
         
@@ -131,9 +129,13 @@ class Hover(IsaacEnv):
             torch.tensor([-0.2, -0.2, 0.0], device=self.device) * torch.pi,
             torch.tensor([0.2, 0.2, 0.5], device=self.device) * torch.pi
         )
+        # self.target_rpy_dist = D.Uniform(
+        #     torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
+        #     torch.tensor([0., 0., 0.], device=self.device) * torch.pi
+        # )
         self.target_rpy_dist = D.Uniform(
-            torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
-            torch.tensor([0., 0., 0.], device=self.device) * torch.pi
+            torch.tensor([-0.1, -0.1, 0.0], device=self.device) * torch.pi,
+            torch.tensor([0.1, 0.1, 0.5], device=self.device) * torch.pi
         )
         
         self.force_disturbance_dist = Normal(0.0, 0.03 * 9.81 / 20)
@@ -201,11 +203,6 @@ class Hover(IsaacEnv):
     def _set_specs(self):
         # drone_state_dim = self.drone.state_spec.shape[-1]
         observation_dim = 3 + 3 + 4 + 3 + 3 # position, velocity, quaternion, heading, up
-
-        if self.use_acc:
-            observation_dim += 2
-        if self.use_jerk:
-            observation_dim += 2
 
         if self.cfg.task.omega:
             observation_dim += 3
@@ -298,8 +295,8 @@ class Hover(IsaacEnv):
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids, self.training)
         
-        self.force_disturbance[env_ids] = self.force_disturbance_dist.sample((*env_ids.shape, 3))
-        self.torques_disturbance[env_ids] = self.torques_disturbance_dist.sample((*env_ids.shape, 3))
+        self.force_disturbance[env_ids] = self.force_disturbance_dist.sample((*env_ids.shape, 3)).to(self.device)
+        self.torques_disturbance[env_ids] = self.torques_disturbance_dist.sample((*env_ids.shape, 3)).to(self.device)
         
         pos = self.init_pos_dist.sample((*env_ids.shape, 1))
         rpy = self.init_rpy_dist.sample((*env_ids.shape, 1))

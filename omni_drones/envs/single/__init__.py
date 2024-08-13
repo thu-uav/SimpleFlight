@@ -22,6 +22,7 @@
 
 
 from .hover import Hover
+from .rotate import Rotate
 from .goto import Goto
 from .goto_return import Goto_return
 from .goto_static import Goto_static

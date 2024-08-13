@@ -5,7 +5,7 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_v_smooth2_opt_withactionhistory_withrotor2critic/08-10_21-22/wandb/run-20240810_212301-9fu9n61o/files/checkpoint_final.pt
+# model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_v_range2to2_2_smooth10/08-12_20-54/wandb/run-20240812_205453-8k7didxj/files/checkpoint_final.pt
 model_dir: null
 
 total_frames: 3000_000_000 #1000_000_000
@@ -16,16 +16,16 @@ seed: 0
 
 viewer:
   resolution: [960, 720]
-  # front
-  eye: [0., -0.005, 6.]
-  lookat: [0., 0., 1.]
-  # # follow drone
-  # eye: [0., 2.0, 2.5]
-  # lookat: [0., 0., 1.0]
+  # # front
+  # eye: [0., -0.005, 6.]
+  # lookat: [0., 0., 1.]
+  eye: [0., 2.0, 2.5]
+  lookat: [0., 0., 1.0]
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_v_range2to2_2_smooth5
+  run_name: Track_v_range0_5to1_2_smooth10
+  # run_name: Rotate_v_range2to2_2_smooth10_eval2
   # run_name: debug
   job_type: train
   entity: chenjy
@@ -38,6 +38,8 @@ wandb:
 
 defaults:
   - task: Track
+  # - task: Hover
+  # - task: Rotate
   # - task: MultiGoto
   # - task: Goto_static
   # - task: Exchange
