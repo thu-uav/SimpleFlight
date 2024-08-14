@@ -126,24 +126,28 @@ class Hover(IsaacEnv):
             torch.tensor([-0.2, -0.2, 0.0], device=self.device) * torch.pi,
             torch.tensor([0.2, 0.2, 0.5], device=self.device) * torch.pi
         )
-        # self.target_rpy_dist = D.Uniform(
-        #     torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
-        #     torch.tensor([0., 0., 0.], device=self.device) * torch.pi
-        # )
         self.target_rpy_dist = D.Uniform(
-            torch.tensor([-0.1, -0.1, 0.0], device=self.device) * torch.pi,
-            torch.tensor([0.1, 0.1, 0.5], device=self.device) * torch.pi
+            torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
+            torch.tensor([0., 0., 0.], device=self.device) * torch.pi
         )
+        # self.target_rpy_dist = D.Uniform(
+        #     torch.tensor([-0.1, -0.1, 0.0], device=self.device) * torch.pi,
+        #     torch.tensor([0.1, 0.1, 0.5], device=self.device) * torch.pi
+        # )
         
         self.force_disturbance_dist = Normal(0.0, 0.03 * 9.81 / 20)
         self.torques_disturbance_dist = Normal(0.0, 0.03 * 9.81 / 10000)
         
         if self.use_eval:
             self.init_pos_dist = D.Uniform(
-                torch.tensor([0.0, 0.0, 0.05], device=self.device),
-                torch.tensor([0.0, 0.0, 0.05], device=self.device)
+                torch.tensor([0.5, 0.5, 1.5], device=self.device),
+                torch.tensor([0.5, 0.5, 1.5], device=self.device)
             )
             self.init_rpy_dist = D.Uniform(
+                torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi,
+                torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi
+            )
+            self.target_rpy_dist = D.Uniform(
                 torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi,
                 torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi
             )
@@ -257,10 +261,8 @@ class Hover(IsaacEnv):
             "pos_bonus": UnboundedContinuousTensorSpec(1),
             "head_bonus": UnboundedContinuousTensorSpec(1),
             "reward_pos": UnboundedContinuousTensorSpec(1),
+            "reward_head": UnboundedContinuousTensorSpec(1),
             "reward_up": UnboundedContinuousTensorSpec(1),
-            "reward_vel": UnboundedContinuousTensorSpec(1),
-            "reward_acc": UnboundedContinuousTensorSpec(1),
-            "reward_jerk": UnboundedContinuousTensorSpec(1),
             "episode_len": UnboundedContinuousTensorSpec(1),
             "pos_error": UnboundedContinuousTensorSpec(1),
             "heading_alignment": UnboundedContinuousTensorSpec(1),
@@ -280,20 +282,6 @@ class Hover(IsaacEnv):
             "angular_a_mean": UnboundedContinuousTensorSpec(1),
             "linear_jerk_mean": UnboundedContinuousTensorSpec(1),
             "angular_jerk_mean": UnboundedContinuousTensorSpec(1),
-            "motor1": UnboundedContinuousTensorSpec(1),
-            "motor2": UnboundedContinuousTensorSpec(1),
-            "motor3": UnboundedContinuousTensorSpec(1),
-            "motor4": UnboundedContinuousTensorSpec(1),
-            "cmd_r": UnboundedContinuousTensorSpec(1),
-            "cmd_p": UnboundedContinuousTensorSpec(1),
-            "cmd_y": UnboundedContinuousTensorSpec(1),
-            "cmd_thrust": UnboundedContinuousTensorSpec(1),
-            "target_r_rate": UnboundedContinuousTensorSpec(1),
-            "target_p_rate": UnboundedContinuousTensorSpec(1),
-            "target_y_rate": UnboundedContinuousTensorSpec(1),
-            "real_r_rate": UnboundedContinuousTensorSpec(1),
-            "real_p_rate": UnboundedContinuousTensorSpec(1),
-            "real_y_rate": UnboundedContinuousTensorSpec(1),
         }).expand(self.num_envs).to(self.device)
         info_spec = CompositeSpec({
             "drone_state": UnboundedContinuousTensorSpec((self.drone.n, 13), device=self.device),
@@ -369,10 +357,6 @@ class Hover(IsaacEnv):
         actions = tensordict[("agents", "action")]
         if self.cfg.task.action_noise:
             actions *= torch.randn(actions.shape, device=self.device) * 0.1 + 1
-        self.stats['motor1'].set_(actions[..., 0])
-        self.stats['motor2'].set_(actions[..., 1])
-        self.stats['motor3'].set_(actions[..., 2])
-        self.stats['motor4'].set_(actions[..., 3])
 
         self.info["prev_action"] = tensordict[("info", "prev_action")]
         # self.info["prev_prev_action"] = tensordict[("info", "prev_prev_action")]
@@ -392,28 +376,12 @@ class Hover(IsaacEnv):
         else:
             self.effort = self.drone.apply_action(actions)
         
-        # log ctbr
-        ctbr = tensordict['ctbr']
-        self.stats['cmd_r'].set_(ctbr[..., 0])
-        self.stats['cmd_p'].set_(ctbr[..., 1])
-        self.stats['cmd_y'].set_(ctbr[..., 2])
-        self.stats['cmd_thrust'].set_(ctbr[..., 3])
-        
-        # log target
-        target_rate = tensordict['target_rate']
-        self.stats['target_r_rate'].set_(target_rate[..., 0])
-        self.stats['target_p_rate'].set_(target_rate[..., 1])
-        self.stats['target_y_rate'].set_(target_rate[..., 2])
-
     def _compute_state_and_obs(self):
         self.root_state = self.drone.get_state()
         self.info["drone_state"][:] = self.root_state[..., :13]
 
         _, log_rot, _, log_angvel = self.root_state[..., :13].reshape(-1, 13).split([3, 4, 3, 3], dim=1)
-        body_rate = quat_rotate_inverse(log_rot, log_angvel).unsqueeze(1) * 180.0 / torch.pi
-        self.stats['real_r_rate'].set_(body_rate[..., 0])
-        self.stats['real_p_rate'].set_(body_rate[..., 1])
-        self.stats['real_y_rate'].set_(body_rate[..., 2])
+        # body_rate = quat_rotate_inverse(log_rot, log_angvel).unsqueeze(1) * 180.0 / torch.pi
 
         # relative position and heading
         self.rpos = self.target_pos - self.root_state[..., :3]
@@ -543,6 +511,7 @@ class Hover(IsaacEnv):
         self.stats["return"] += reward
         # bonus
         self.stats["reward_pos"] = reward_pos
+        self.stats["reward_head"] = reward_head
         self.stats["pos_bonus"] = reward_pos_bonus
         self.stats["head_bonus"] = reward_head_bonus
         # self.stats["reward_up"] = reward_up

@@ -18,8 +18,8 @@ reward_distance_scale: 10.0
 # flag
 use_disturbance: 0
 use_eval: 0
-use_rotor2critic: 1 # need to set critic_input = 'state'
-use_action_history: true
+use_rotor2critic: 0 # need to set critic_input = 'state'
+use_action_history: false
 action_history_step: 5
 
 # observation options
