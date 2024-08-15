@@ -143,8 +143,8 @@ class Track(IsaacEnv):
         # )
 
         self.v_scale_dist = D.Uniform(
-            torch.tensor(0.5, device=self.device),
-            torch.tensor(1.2, device=self.device)
+            torch.tensor(1.0, device=self.device),
+            torch.tensor(1.5, device=self.device)
         )
 
         # self.v_scale_dist = D.Uniform(

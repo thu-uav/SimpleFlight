@@ -25,7 +25,7 @@ use_eval: 0
 use_rotor2critic: 1 # need to set critic_input = 'state'
 use_action_history: false
 action_history_step: 5
-reward_action_smoothness_weight: 10.0
+reward_action_smoothness_weight: 1.0
 reward_distance_scale: 5.0
 
 action_transform: PIDrate

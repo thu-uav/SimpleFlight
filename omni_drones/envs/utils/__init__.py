@@ -186,8 +186,12 @@ def lemniscate_v(t, k):
     cos_t = torch.cos(t)
     sin2p1 = torch.square(sin_t) + 1
 
+    # x = torch.stack([
+    #     cos_t, sin_t * cos_t, sin_t
+    # ], dim=-1) / sin2p1.unsqueeze(-1)
+
     x = torch.stack([
-        cos_t, sin_t * cos_t, sin_t
+        cos_t, sin_t * cos_t, torch.zeros_like(t)
     ], dim=-1) / sin2p1.unsqueeze(-1)
     
     return x
