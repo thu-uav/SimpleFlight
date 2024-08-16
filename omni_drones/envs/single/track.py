@@ -481,7 +481,7 @@ class Track(IsaacEnv):
         reward_up = 0.5 / (1.0 + torch.square(tiltage))
 
         # effort
-        self.reward_action_smoothness_weight += self.reward_action_smoothness_weight_lr * self.count
+        self.reward_action_smoothness_weight = self.reward_action_smoothness_weight_lr * self.count
         reward_action_smoothness = self.reward_action_smoothness_weight * torch.exp(-self.action_error_order1)
 
         # spin reward, fixed z
