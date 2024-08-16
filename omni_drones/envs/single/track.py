@@ -92,6 +92,7 @@ class Track(IsaacEnv):
     def __init__(self, cfg, headless):
         self.reset_thres = cfg.task.reset_thres
         self.reward_action_smoothness_weight = cfg.task.reward_action_smoothness_weight
+        self.reward_action_smoothness_weight_lr = cfg.task.reward_action_smoothness_weight_lr
         self.reward_distance_scale = cfg.task.reward_distance_scale
         self.time_encoding = cfg.task.time_encoding
         self.future_traj_steps = int(cfg.task.future_traj_steps)
@@ -167,8 +168,8 @@ class Track(IsaacEnv):
             #     torch.tensor([1.2, 1.2, 0.25], device=self.device)
             # )
             self.v_scale_dist = D.Uniform(
-                torch.tensor(1.0, device=self.device),
-                torch.tensor(1.0, device=self.device)
+                torch.tensor(1.5, device=self.device),
+                torch.tensor(1.5, device=self.device)
                 )
             # self.traj_c_dist = D.Uniform(
             #     torch.tensor(0.0, device=self.device),
@@ -198,6 +199,7 @@ class Track(IsaacEnv):
         
         self.prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
         # self.prev_prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
+        self.count = 0 # episode of RL training
 
     def _design_scene(self):
         drone_model = MultirotorBase.REGISTRY[self.cfg.task.drone_model]
@@ -270,6 +272,7 @@ class Track(IsaacEnv):
             "reward_up": UnboundedContinuousTensorSpec(1),
             "reward_spin": UnboundedContinuousTensorSpec(1),
             "reward_action_smoothness": UnboundedContinuousTensorSpec(1),
+            "reward_action_smoothness_scale": UnboundedContinuousTensorSpec(1),
             "linear_v_max": UnboundedContinuousTensorSpec(1),
             "angular_v_max": UnboundedContinuousTensorSpec(1),
             "linear_a_max": UnboundedContinuousTensorSpec(1),
@@ -478,10 +481,9 @@ class Track(IsaacEnv):
         reward_up = 0.5 / (1.0 + torch.square(tiltage))
 
         # effort
+        self.reward_action_smoothness_weight += self.reward_action_smoothness_weight_lr * self.count
         reward_action_smoothness = self.reward_action_smoothness_weight * torch.exp(-self.action_error_order1)
-        # if self.use_action_error_order2:
-        #     reward_action_smoothness += self.reward_action_smoothness_weight * torch.exp(-self.action_error_order2)
-        
+
         # spin reward, fixed z
         spin = torch.square(self.drone.vel[..., -1])
         reward_spin = 0.5 / (1.0 + torch.square(spin))
@@ -496,6 +498,7 @@ class Track(IsaacEnv):
         self.stats['reward_action_smoothness'].add_(reward_action_smoothness)
         self.stats['reward_spin'].add_(reward_pos * reward_spin)
         self.stats['reward_up'].add_(reward_pos * reward_up)
+        self.stats['reward_action_smoothness_scale'].set_(self.reward_action_smoothness_weight * torch.ones(self.num_envs, 1, device=self.device))
 
         done = (
             (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
