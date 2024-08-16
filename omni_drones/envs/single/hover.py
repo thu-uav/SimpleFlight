@@ -482,6 +482,9 @@ class Hover(IsaacEnv):
         # uprightness
         reward_up = torch.square((self.drone.up[..., 2] + 1) / 2)
 
+        # effort
+        reward_action_smoothness = self.reward_action_smoothness_weight * torch.exp(-self.action_error_order1)
+
         self.stats["smoothness_mean"].add_(self.drone.throttle_difference)
         self.stats["smoothness_max"].set_(torch.max(self.drone.throttle_difference, self.stats["smoothness_max"]))
         
@@ -491,6 +494,7 @@ class Hover(IsaacEnv):
             + reward_head 
             + reward_head_bonus
             + reward_up
+            + reward_action_smoothness
         )
 
         done = (
