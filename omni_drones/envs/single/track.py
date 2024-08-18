@@ -103,7 +103,7 @@ class Track(IsaacEnv):
         self.num_drones = 1
         self.use_rotor2critic = cfg.task.use_rotor2critic
         self.action_history_step = cfg.task.action_history_step
-        self.trajectory_scale = cfg.task.trajectory_scale # 'lower', 'normal', 'fast'
+        self.trajectory_scale = cfg.task.trajectory_scale # 'slow', 'normal', 'fast'
 
         super().__init__(cfg, headless)
 
@@ -136,14 +136,24 @@ class Track(IsaacEnv):
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi
         )
 
-        # k = 0.42 - 0.5, lower, 1500 steps
+        # k = 0.42 - 0.5, slow, 1500 steps
         # k = 1.2 - 1.4, normal, 550 steps
         # k = 1.8 - 1.9, fast, 350 steps
-
-        self.v_scale_dist = D.Uniform(
-            torch.tensor(0.42, device=self.device),
-            torch.tensor(0.5, device=self.device)
-        )
+        if self.trajectory_scale == 'slow':
+            self.v_scale_dist = D.Uniform(
+                torch.tensor(0.42, device=self.device),
+                torch.tensor(0.5, device=self.device)
+            )
+        elif self.trajectory_scale == 'normal':
+            self.v_scale_dist = D.Uniform(
+                torch.tensor(1.2, device=self.device),
+                torch.tensor(1.4, device=self.device)
+            )
+        else:
+            self.v_scale_dist = D.Uniform(
+                torch.tensor(1.8, device=self.device),
+                torch.tensor(1.9, device=self.device)
+            )
         
         # eval
         if self.use_eval:
