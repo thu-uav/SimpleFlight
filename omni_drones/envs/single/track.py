@@ -93,6 +93,7 @@ class Track(IsaacEnv):
         self.reset_thres = cfg.task.reset_thres
         self.reward_action_smoothness_weight = cfg.task.reward_action_smoothness_weight
         self.reward_action_smoothness_weight_lr = cfg.task.reward_action_smoothness_weight_lr
+        self.reward_smoothness_max = cfg.task.reward_smoothness_max
         self.reward_distance_scale = cfg.task.reward_distance_scale
         self.time_encoding = cfg.task.time_encoding
         self.future_traj_steps = int(cfg.task.future_traj_steps)
@@ -170,13 +171,9 @@ class Track(IsaacEnv):
             #     torch.tensor([1.2, 1.2, 0.25], device=self.device)
             # )
             self.v_scale_dist = D.Uniform(
-                torch.tensor(2.2, device=self.device),
-                torch.tensor(2.2, device=self.device)
+                torch.tensor(0.45, device=self.device),
+                torch.tensor(0.45, device=self.device)
                 )
-            # self.traj_c_dist = D.Uniform(
-            #     torch.tensor(0.0, device=self.device),
-            #     torch.tensor(0.0, device=self.device)
-            # )
         
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
 
@@ -478,7 +475,7 @@ class Track(IsaacEnv):
         reward_up = 0.5 / (1.0 + torch.square(tiltage))
 
         # effort
-        self.reward_action_smoothness_weight = self.reward_action_smoothness_weight_lr * self.count
+        self.reward_action_smoothness_weight = min(self.reward_action_smoothness_weight_lr * self.count, self.reward_smoothness_max)
         reward_action_smoothness = self.reward_action_smoothness_weight * torch.exp(-self.action_error_order1)
 
         # spin reward, fixed z

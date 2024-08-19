@@ -27,6 +27,7 @@ use_action_history: false
 action_history_step: 5
 reward_action_smoothness_weight: 0.0
 reward_action_smoothness_weight_lr: 0.0001
+reward_smoothness_max: 5.0
 reward_distance_scale: 5.0
 trajectory_scale: 'slow' # 'slow', 'normal', 'fast'
 
