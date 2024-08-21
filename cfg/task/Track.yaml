@@ -14,8 +14,8 @@ force_sensor: false
 time_encoding: true
 intrinsics: false
 wind: false
-latency: false
-latency_step: 2
+latency: true
+latency_step: 1
 random_latency: false
 
 reset_thres: 1.
