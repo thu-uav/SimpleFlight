@@ -180,14 +180,9 @@ def lemniscate(t):
     
     return x
 
-def lemniscate_v(t, k):
-    t = k * t
-    sin_t = torch.sin(t)
-    cos_t = torch.cos(t)
-
-    # x = torch.stack([
-    #     cos_t, sin_t * cos_t, sin_t
-    # ], dim=-1) / sin2p1.unsqueeze(-1)
+def lemniscate_v(t, T):
+    sin_t = torch.sin(2 * torch.pi * t / T)
+    cos_t = torch.cos(2 * torch.pi * t / T)
 
     x = torch.stack([
         cos_t, sin_t * cos_t, torch.zeros_like(t)
