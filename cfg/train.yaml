@@ -25,7 +25,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_fast_drag0_action_norm
+  run_name: Track_fast_drag0_only_action_smoothness
   # run_name: debug
   job_type: train
   entity: chenjy
