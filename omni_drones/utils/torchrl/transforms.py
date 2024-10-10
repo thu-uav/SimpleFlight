@@ -427,6 +427,8 @@ class PIDRateController(Transform):
         action = tensordict[self.action_key]
 
         action = torch.tanh(action)
+        # action: [-1, 1]
+        tensordict.set(("info", "policy_action"), action)
         target_rate, target_thrust = action.split([3, 1], -1)
         # target_rate: [-1, 1], target_thrust: [0, max_thrust_ratio]
         target_thrust = torch.clamp((target_thrust + 1) / 2, min = 0.0, max = self.max_thrust_ratio)
