@@ -174,8 +174,8 @@ class Track(IsaacEnv):
             #     torch.tensor([1.2, 1.2, 0.25], device=self.device)
             # )
             self.T_scale_dist = D.Uniform(
-                torch.tensor(0.45, device=self.device),
-                torch.tensor(0.45, device=self.device)
+                torch.tensor(3.5, device=self.device),
+                torch.tensor(3.5, device=self.device)
                 )
         
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
