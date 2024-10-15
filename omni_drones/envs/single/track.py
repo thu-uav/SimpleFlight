@@ -108,6 +108,8 @@ class Track(IsaacEnv):
         self.use_rotor2critic = cfg.task.use_rotor2critic
         self.action_history_step = cfg.task.action_history_step
         self.trajectory_scale = cfg.task.trajectory_scale # 'slow', 'normal', 'fast'
+        self.reward_spin_weight = cfg.task.reward_spin_weight
+        self.reward_up_weight = cfg.task.reward_up_weight
 
         super().__init__(cfg, headless)
 
@@ -402,9 +404,13 @@ class Track(IsaacEnv):
         self.target_pos[:] = self._compute_traj(self.future_traj_steps, step_size=5)
         
         self.rpos = self.target_pos - root_state[..., :3]
+        # obs = [
+        #     self.rpos.flatten(1).unsqueeze(1),
+        #     root_state[..., 3:10], root_state[..., 13:19],
+        # ]
         obs = [
             self.rpos.flatten(1).unsqueeze(1),
-            root_state[..., 3:10], root_state[..., 13:19],
+            root_state[..., 3:13],
         ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:
@@ -478,7 +484,7 @@ class Track(IsaacEnv):
         
         # uprightness
         tiltage = torch.abs(1 - self.drone.up[..., 2])
-        reward_up = 0.5 / (1.0 + torch.square(tiltage))
+        reward_up = self.reward_up_weight * 0.5 / (1.0 + torch.square(tiltage))
 
         # reward action norm
         self.reward_action_norm_weight = min(self.reward_action_norm_weight_init + self.reward_action_norm_weight_lr * self.count, self.reward_norm_max)
@@ -490,7 +496,7 @@ class Track(IsaacEnv):
 
         # spin reward, fixed z
         spin = torch.square(self.drone.vel[..., -1])
-        reward_spin = 0.5 / (1.0 + torch.square(spin))
+        reward_spin = self.reward_spin_weight * 0.5 / (1.0 + torch.square(spin))
 
         reward = (
             reward_pos
