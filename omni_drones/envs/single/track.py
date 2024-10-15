@@ -110,6 +110,7 @@ class Track(IsaacEnv):
         self.trajectory_scale = cfg.task.trajectory_scale # 'slow', 'normal', 'fast'
         self.reward_spin_weight = cfg.task.reward_spin_weight
         self.reward_up_weight = cfg.task.reward_up_weight
+        self.use_random_init = cfg.task.use_random_init
 
         super().__init__(cfg, headless)
 
@@ -182,9 +183,7 @@ class Track(IsaacEnv):
         
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
 
-        self.traj_t0 = torch.pi / 2.0
-        # self.traj_c = torch.zeros(self.num_envs, device=self.device)
-        # self.traj_scale = torch.zeros(self.num_envs, 3, device=self.device)
+        self.traj_t0 = torch.pi / 2.0 * torch.ones(self.num_envs, device=self.device)
         self.T_scale = torch.zeros(self.num_envs, device=self.device)
         self.traj_rot = torch.zeros(self.num_envs, 4, device=self.device)
 
@@ -314,9 +313,13 @@ class Track(IsaacEnv):
         self.traj_rot[env_ids] = euler_to_quaternion(self.traj_rpy_dist.sample(env_ids.shape))
         # self.traj_scale[env_ids] = self.traj_scale_dist.sample(env_ids.shape)
         self.T_scale[env_ids] = self.T_scale_dist.sample(env_ids.shape)
+        if self.use_random_init:
+            self.traj_t0[env_ids] = torch.rand(env_ids.shape).to(self.device) * self.T_scale[env_ids] # 0 ~ T
+        else:
+            self.traj_t0[env_ids] = torch.pi / 2
 
         t0 = torch.zeros(len(env_ids), device=self.device)
-        pos = lemniscate_v(t0 + self.traj_t0, self.T_scale[env_ids])
+        pos = lemniscate_v(t0 + self.traj_t0[env_ids], self.T_scale[env_ids])
         pos = pos + self.origin
         rot = euler_to_quaternion(self.init_rpy_dist.sample(env_ids.shape))
         vel = torch.zeros(len(env_ids), 1, 6, device=self.device)
@@ -350,7 +353,7 @@ class Track(IsaacEnv):
         if self._should_render(0) and (env_ids == self.central_env_idx).any() :
             # visualize the trajectory
             self.draw.clear_lines()
-
+            breakpoint()
             traj_vis = self._compute_traj(self.max_episode_length, self.central_env_idx.unsqueeze(0))[0]
             traj_vis = traj_vis + self.envs_positions[self.central_env_idx]
             point_list_0 = traj_vis[:-1].tolist()
@@ -573,7 +576,7 @@ class Track(IsaacEnv):
         if env_ids is None:
             env_ids = ...
         t = self.progress_buf[env_ids].unsqueeze(1) + step_size * torch.arange(steps, device=self.device)
-        t = self.traj_t0 + t * self.dt
+        t = self.traj_t0[env_ids].unsqueeze(1) + t * self.dt
         # traj_rot = self.traj_rot[env_ids].unsqueeze(1).expand(-1, t.shape[1], 4)
         
         target_pos = vmap(lemniscate_v)(t, self.T_scale[env_ids].unsqueeze(-1))

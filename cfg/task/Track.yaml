@@ -25,6 +25,8 @@ use_eval: 0
 use_rotor2critic: 0 # need to set critic_input = 'state'
 use_action_history: false
 action_history_step: 5
+# random init pos
+use_random_init: true
 # up
 reward_up_weight: 1.0
 # spin
