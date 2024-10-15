@@ -654,6 +654,7 @@ class MultirotorBase(RobotBase):
         # self.acc[:] = acc
         self.heading[:] = quat_axis(self.rot, axis=0)
         self.up[:] = quat_axis(self.rot, axis=2)
+        # state = [self.pos, self.rot, self.vel, self.heading, self.up, self.throttle * 2 - 1, self.vel_b]
         state = [self.pos, self.rot, self.vel, self.heading, self.up, self.throttle * 2 - 1]
         if self.use_force_sensor:
             self.force_readings, self.torque_readings = self.get_force_sensor_forces().chunk(2, -1)

@@ -412,9 +412,15 @@ class Track(IsaacEnv):
         #     self.rpos.flatten(1).unsqueeze(1),
         #     root_state[..., 3:10], root_state[..., 13:19],
         # ]
+        # obs = [
+        #     self.rpos.flatten(1).unsqueeze(1),
+        #     root_state[..., 3:19],
+        # ]
+        # world frame: rpos, quat, linear velocity
+        # body frame: body rate
         obs = [
             self.rpos.flatten(1).unsqueeze(1),
-            root_state[..., 3:19],
+            root_state[..., 3:10], root_state[..., -3:], root_state[..., 13:19],
         ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:
