@@ -220,8 +220,9 @@ class Track(IsaacEnv):
         return ["/World/defaultGroundPlane"]
     
     def _set_specs(self):
-        drone_state_dim = 3 + 3 + 4 + 3 + 3 # position, velocity, quaternion, heading, up
-        obs_dim = drone_state_dim + 3 * (self.future_traj_steps-1)
+        # drone_state_dim = 3 + 3 + 4 + 3 + 3 # position, velocity, quaternion, heading, up
+        drone_state_dim = 4 + 6 # quaternion, velocity
+        obs_dim = drone_state_dim + 3 * self.future_traj_steps
         if self.time_encoding:
             self.time_encoding_dim = 4
             obs_dim += self.time_encoding_dim
