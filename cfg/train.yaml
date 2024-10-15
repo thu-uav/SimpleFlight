@@ -25,7 +25,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_obs_pos_quat_vel_length350
+  run_name: Track_obs_allvel_head_up_spin1_up1_length350
   # run_name: debug
   job_type: train
   entity: chenjy

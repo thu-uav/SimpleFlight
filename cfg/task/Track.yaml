@@ -26,9 +26,9 @@ use_rotor2critic: 0 # need to set critic_input = 'state'
 use_action_history: false
 action_history_step: 5
 # up
-reward_up_weight: 0.0
+reward_up_weight: 1.0
 # spin
-reward_spin_weight: 0.0
+reward_spin_weight: 1.0
 # action smoothness
 reward_action_smoothness_weight_init: 0.0
 reward_action_smoothness_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005

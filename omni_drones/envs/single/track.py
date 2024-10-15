@@ -221,7 +221,7 @@ class Track(IsaacEnv):
     
     def _set_specs(self):
         # drone_state_dim = 3 + 3 + 4 + 3 + 3 # position, velocity, quaternion, heading, up
-        drone_state_dim = 4 + 6 # quaternion, velocity
+        drone_state_dim = 4 + 6 + 3 + 3 # quaternion, velocity
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         if self.time_encoding:
             self.time_encoding_dim = 4
@@ -411,7 +411,7 @@ class Track(IsaacEnv):
         # ]
         obs = [
             self.rpos.flatten(1).unsqueeze(1),
-            root_state[..., 3:13],
+            root_state[..., 3:19],
         ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:
