@@ -219,7 +219,7 @@ class Track(IsaacEnv):
         return ["/World/defaultGroundPlane"]
     
     def _set_specs(self):
-        drone_state_dim = 4 + 3 + 3 + 3 + 3 + 3 # quaternion, linear vel, body rate, heading, lateral, up
+        drone_state_dim = 3 + 3 + 3 + 3 + 3 # linear vel, body rate, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         if self.time_encoding:
             self.time_encoding_dim = 4
@@ -409,7 +409,7 @@ class Track(IsaacEnv):
         # rpos, quat, linear velocity, body rate, heading, lateral, up
         obs = [
             self.rpos.flatten(1).unsqueeze(1),
-            root_state[..., 3:7], root_state[..., 7:10],
+            root_state[..., 7:10],
             root_state[..., 16:19], root_state[..., 19:28],
         ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
