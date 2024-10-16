@@ -219,8 +219,7 @@ class Track(IsaacEnv):
         return ["/World/defaultGroundPlane"]
     
     def _set_specs(self):
-        # drone_state_dim = 3 + 3 + 4 + 3 + 3 # position, velocity, quaternion, heading, up
-        drone_state_dim = 4 + 6 + 3 + 3 # quaternion, velocity
+        drone_state_dim = 4 + 3 + 3 + 3 + 3 + 3 # quaternion, linear vel, body rate, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         if self.time_encoding:
             self.time_encoding_dim = 4
@@ -353,7 +352,6 @@ class Track(IsaacEnv):
         if self._should_render(0) and (env_ids == self.central_env_idx).any() :
             # visualize the trajectory
             self.draw.clear_lines()
-            breakpoint()
             traj_vis = self._compute_traj(self.max_episode_length, self.central_env_idx.unsqueeze(0))[0]
             traj_vis = traj_vis + self.envs_positions[self.central_env_idx]
             point_list_0 = traj_vis[:-1].tolist()
@@ -408,19 +406,11 @@ class Track(IsaacEnv):
         self.target_pos[:] = self._compute_traj(self.future_traj_steps, step_size=5)
         
         self.rpos = self.target_pos - root_state[..., :3]
-        # obs = [
-        #     self.rpos.flatten(1).unsqueeze(1),
-        #     root_state[..., 3:10], root_state[..., 13:19],
-        # ]
-        # obs = [
-        #     self.rpos.flatten(1).unsqueeze(1),
-        #     root_state[..., 3:19],
-        # ]
-        # world frame: rpos, quat, linear velocity
-        # body frame: body rate
+        # rpos, quat, linear velocity, body rate, heading, lateral, up
         obs = [
             self.rpos.flatten(1).unsqueeze(1),
-            root_state[..., 3:10], root_state[..., -3:], root_state[..., 13:19],
+            root_state[..., 3:7], root_state[..., 7:10],
+            root_state[..., 16:19], root_state[..., 19:28],
         ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:

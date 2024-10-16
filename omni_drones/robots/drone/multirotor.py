@@ -223,6 +223,7 @@ class MultirotorBase(RobotBase):
         self.pos, self.rot = self.get_world_poses(True)
         self.throttle_difference = torch.zeros(self.throttle.shape[:-1], device=self.device)
         self.heading = torch.zeros(*self.shape, 3, device=self.device)
+        self.lateral = torch.zeros(*self.shape, 3, device=self.device)
         self.up = torch.zeros(*self.shape, 3, device=self.device)
         self.vel = self.vel_w = torch.zeros(*self.shape, 6, device=self.device)
         self.vel_b = torch.zeros_like(self.vel_w)
@@ -357,6 +358,7 @@ class MultirotorBase(RobotBase):
         self.pos, self.rot = self.get_world_poses(True)
         self.throttle_difference = torch.zeros(self.throttle.shape[:-1], device=self.device)
         self.heading = torch.zeros(*self.shape, 3, device=self.device)
+        self.lateral = torch.zeros(*self.shape, 3, device=self.device)
         self.up = torch.zeros(*self.shape, 3, device=self.device)
         self.vel = self.vel_w = torch.zeros(*self.shape, 6, device=self.device)
         self.vel_b = torch.zeros_like(self.vel_w)
@@ -653,9 +655,10 @@ class MultirotorBase(RobotBase):
         # acc = self.acc.lerp((vel - self.vel) / self.dt, self.alpha)
         # self.acc[:] = acc
         self.heading[:] = quat_axis(self.rot, axis=0)
+        self.lateral[:] = quat_axis(self.rot, axis=1)
         self.up[:] = quat_axis(self.rot, axis=2)
-        # state = [self.pos, self.rot, self.vel, self.heading, self.up, self.throttle * 2 - 1, self.vel_b]
-        state = [self.pos, self.rot, self.vel, self.heading, self.up, self.throttle * 2 - 1]
+        state = [self.pos, self.rot, self.vel, self.vel_b, self.heading, self.lateral, self.up, self.throttle * 2 - 1]
+        # state = [self.pos, self.rot, self.vel, self.heading, self.up, self.throttle * 2 - 1]
         if self.use_force_sensor:
             self.force_readings, self.torque_readings = self.get_force_sensor_forces().chunk(2, -1)
             # normalize by mass and inertia
