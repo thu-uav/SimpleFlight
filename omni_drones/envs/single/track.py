@@ -156,10 +156,15 @@ class Track(IsaacEnv):
                 torch.tensor(5.3, device=self.device),
                 torch.tensor(5.7, device=self.device)
             )
-        else:
+        elif self.trajectory_scale == 'fast':
             self.T_scale_dist = D.Uniform(
                 torch.tensor(3.3, device=self.device),
                 torch.tensor(3.7, device=self.device)
+            )
+        else:
+            self.T_scale_dist = D.Uniform(
+                torch.tensor(3.3, device=self.device),
+                torch.tensor(15.2, device=self.device)
             )
         
         # eval
@@ -315,7 +320,8 @@ class Track(IsaacEnv):
         if self.use_random_init:
             self.traj_t0[env_ids] = torch.rand(env_ids.shape).to(self.device) * self.T_scale[env_ids] # 0 ~ T
         else:
-            self.traj_t0[env_ids] = torch.pi / 2
+            # self.traj_t0[env_ids] = torch.pi / 2
+            self.traj_t0[env_ids] = 0.25 * self.T_scale[env_ids]
 
         t0 = torch.zeros(len(env_ids), device=self.device)
         pos = lemniscate_v(t0 + self.traj_t0[env_ids], self.T_scale[env_ids])
