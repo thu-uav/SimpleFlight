@@ -111,6 +111,7 @@ class Track(IsaacEnv):
         self.reward_spin_weight = cfg.task.reward_spin_weight
         self.reward_up_weight = cfg.task.reward_up_weight
         self.use_random_init = cfg.task.use_random_init
+        self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
 
         super().__init__(cfg, headless)
 
@@ -228,7 +229,10 @@ class Track(IsaacEnv):
         return ["/World/defaultGroundPlane"]
     
     def _set_specs(self):
-        drone_state_dim = 3 + 3 + 3 + 3 + 3 # linear vel, body rate, heading, lateral, up
+        if self.use_ab_wolrd_pos:
+            drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
+        else:
+            drone_state_dim = 3 + 3 + 3 + 3 + 3 # linear vel, body rate, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         if self.time_encoding:
             self.time_encoding_dim = 4
@@ -416,12 +420,21 @@ class Track(IsaacEnv):
         self.target_pos[:] = self._compute_traj(self.future_traj_steps, step_size=5)
         
         self.rpos = self.target_pos - root_state[..., :3]
-        # rpos, quat, linear velocity, body rate, heading, lateral, up
-        obs = [
-            self.rpos.flatten(1).unsqueeze(1),
-            root_state[..., 7:10],
-            root_state[..., 16:19], root_state[..., 19:28],
-        ]
+        if self.use_ab_wolrd_pos:
+            # pos, rpos, quat, linear velocity, body rate, heading, lateral, up
+            obs = [
+                root_state[..., :3],
+                self.rpos.flatten(1).unsqueeze(1),
+                root_state[..., 7:10],
+                root_state[..., 16:19], root_state[..., 19:28],
+            ]
+        else:
+            # rpos, quat, linear velocity, body rate, heading, lateral, up
+            obs = [
+                self.rpos.flatten(1).unsqueeze(1),
+                root_state[..., 7:10],
+                root_state[..., 16:19], root_state[..., 19:28],
+            ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:
             t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)

@@ -25,8 +25,10 @@ use_eval: 0
 use_rotor2critic: 0 # need to set critic_input = 'state'
 use_action_history: false
 action_history_step: 5
+# add pos to obs
+use_ab_wolrd_pos: false
 # random init pos
-use_random_init: true
+use_random_init: false
 # up
 reward_up_weight: 0.0
 # spin
