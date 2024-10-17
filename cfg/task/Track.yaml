@@ -23,20 +23,22 @@ future_traj_steps: 10
 
 use_eval: 0
 use_rotor2critic: 0 # need to set critic_input = 'state'
-use_action_history: false
+use_action_history: true
 action_history_step: 5
 # add pos to obs
 use_ab_wolrd_pos: false
 # random init pos
 use_random_init: false
+# init vel
+use_vel_init: true
 # up
 reward_up_weight: 0.0
 # spin
 reward_spin_weight: 0.0
 # action smoothness
 reward_action_smoothness_weight_init: 0.0
-reward_action_smoothness_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 0.0
+reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
+reward_smoothness_max: 10.0
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005

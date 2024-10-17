@@ -112,6 +112,7 @@ class Track(IsaacEnv):
         self.reward_up_weight = cfg.task.reward_up_weight
         self.use_random_init = cfg.task.use_random_init
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
+        self.use_vel_init = cfg.task.use_vel_init
 
         super().__init__(cfg, headless)
 
@@ -332,11 +333,12 @@ class Track(IsaacEnv):
             self.traj_t0[env_ids] = 0.25 * self.T_scale[env_ids]
 
         t0 = torch.zeros(len(env_ids), device=self.device)
-        pos = lemniscate_v(t0 + self.traj_t0[env_ids], self.T_scale[env_ids])
+        pos, linear_v = lemniscate_v(t0 + self.traj_t0[env_ids], self.T_scale[env_ids])
         pos = pos + self.origin
         rot = euler_to_quaternion(self.init_rpy_dist.sample(env_ids.shape))
         vel = torch.zeros(len(env_ids), 1, 6, device=self.device)
-        # vel[..., :3] = linear_v.unsqueeze(1)
+        if self.use_vel_init:
+            vel[..., :3] = linear_v.unsqueeze(1)
         self.drone.set_world_poses(
             pos + self.envs_positions[env_ids], rot, env_ids
         )
@@ -598,7 +600,7 @@ class Track(IsaacEnv):
         t = self.traj_t0[env_ids].unsqueeze(1) + t * self.dt
         # traj_rot = self.traj_rot[env_ids].unsqueeze(1).expand(-1, t.shape[1], 4)
         
-        target_pos = vmap(lemniscate_v)(t, self.T_scale[env_ids].unsqueeze(-1))
+        target_pos, _ = vmap(lemniscate_v)(t, self.T_scale[env_ids].unsqueeze(-1))
         # target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos) * self.traj_scale[env_ids].unsqueeze(1)
         # target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos)
 

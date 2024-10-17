@@ -188,7 +188,11 @@ def lemniscate_v(t, T):
         cos_t, sin_t * cos_t, torch.zeros_like(t)
     ], dim=-1)
     
-    return x
+    v = torch.stack([
+        -2 * torch.pi / T * sin_t, 2 * torch.pi / T * torch.cos(4 * torch.pi * t / T), torch.zeros_like(t)
+    ], dim=-1)
+    
+    return x, v
 
 def line_acc(t, a, threshold, alpha):
     # Convert angle c from degrees to radians
