@@ -9,7 +9,7 @@ env: ${task.env}
 # model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_smooth_lr00001_max5/10-13_17-58/wandb/run-20241013_175841-eswerg5j/files/checkpoint_final.pt
 model_dir: null
 
-total_frames: 3000_000_000 #1000_000_000
+total_frames: 9000_000_000 #1000_000_000
 max_iters: -1
 eval_interval: -1
 save_interval: 100
@@ -25,7 +25,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_slow2fast_init0
+  run_name: Track_length350_random_init_wo_spinreward
   # run_name: debug
   job_type: train
   entity: chenjy

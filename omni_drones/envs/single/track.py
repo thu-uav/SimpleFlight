@@ -157,9 +157,13 @@ class Track(IsaacEnv):
                 torch.tensor(5.7, device=self.device)
             )
         elif self.trajectory_scale == 'fast':
+            # self.T_scale_dist = D.Uniform(
+            #     torch.tensor(3.3, device=self.device),
+            #     torch.tensor(3.7, device=self.device)
+            # )
             self.T_scale_dist = D.Uniform(
-                torch.tensor(3.3, device=self.device),
-                torch.tensor(3.7, device=self.device)
+                torch.tensor(3.5, device=self.device),
+                torch.tensor(3.5, device=self.device)
             )
         else:
             self.T_scale_dist = D.Uniform(
@@ -501,7 +505,7 @@ class Track(IsaacEnv):
         reward_action_smoothness = self.reward_action_smoothness_weight * torch.exp(-self.action_error_order1)
 
         # spin reward, fixed z
-        spin = torch.square(self.drone.vel[..., -1])
+        spin = torch.square(self.drone.vel_b[..., -1])
         reward_spin = self.reward_spin_weight * 0.5 / (1.0 + torch.square(spin))
 
         reward = (
