@@ -25,7 +25,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_fast_wo_aux_with_initv
+  run_name: Track_slow_norm_smooth0_5
   # run_name: debug
   job_type: train
   entity: chenjy
@@ -38,10 +38,5 @@ wandb:
 
 defaults:
   - task: Track
-  # - task: Hover
-  # - task: Rotate
-  # - task: MultiGoto
-  # - task: Goto_static
-  # - task: Exchange
   - algo: mappo
   - _self_
