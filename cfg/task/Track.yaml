@@ -6,7 +6,7 @@ defaults:
   - /base/sim_base@_here_
 
 env:
-  num_envs: 4096
+  num_envs: 100
   max_episode_length: 1500
 
 drone_model: Crazyflie
@@ -35,14 +35,22 @@ use_vel_init: false
 reward_up_weight: 0.0
 # spin
 reward_spin_weight: 0.0
+# acc
+reward_acc_weight_init: 0.0
+reward_acc_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
+reward_acc_max: 0.0
+# jerk
+reward_jerk_weight_init: 0.0
+reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
+reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 1.0
+reward_action_smoothness_weight_init: 0.5
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 1.0
+reward_smoothness_max: 0.5
 # action norm
-reward_action_norm_weight_init: 1.0
+reward_action_norm_weight_init: 0.5
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
-reward_norm_max: 1.0
+reward_norm_max: 0.5
 # distance
 reward_distance_scale: 5.0
 trajectory_scale: 'mixed' # 'slow', 'normal', 'fast'

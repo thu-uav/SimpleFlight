@@ -91,6 +91,13 @@ class Track(IsaacEnv):
     """
     def __init__(self, cfg, headless):
         self.reset_thres = cfg.task.reset_thres
+        self.reward_acc_weight_init = cfg.task.reward_acc_weight_init
+        self.reward_acc_weight_lr = cfg.task.reward_acc_weight_lr
+        self.reward_acc_max = cfg.task.reward_acc_max
+        self.reward_jerk_weight_init = cfg.task.reward_jerk_weight_init
+        self.reward_jerk_weight_lr = cfg.task.reward_jerk_weight_lr
+        self.reward_jerk_max = cfg.task.reward_jerk_max
+        # action norm and smoothness
         self.reward_action_smoothness_weight_init = cfg.task.reward_action_smoothness_weight_init
         self.reward_action_smoothness_weight_lr = cfg.task.reward_action_smoothness_weight_lr
         self.reward_smoothness_max = cfg.task.reward_smoothness_max
@@ -519,9 +526,16 @@ class Track(IsaacEnv):
         self.reward_action_norm_weight = min(self.reward_action_norm_weight_init + self.reward_action_norm_weight_lr * self.count, self.reward_norm_max)
         reward_action_norm = self.reward_action_norm_weight * torch.exp(-torch.norm(self.policy_actions, dim=-1))
 
-        # effort
+        # reward action smooth
         self.reward_action_smoothness_weight = min(self.reward_action_smoothness_weight_init + self.reward_action_smoothness_weight_lr * self.count, self.reward_smoothness_max)
         reward_action_smoothness = self.reward_action_smoothness_weight * torch.exp(-self.action_error_order1)
+        
+        # reward acc
+        self.reward_acc_weight = min(self.reward_acc_weight_init + self.reward_acc_weight_lr * self.count, self.reward_acc_max)
+        reward_acc = self.reward_acc_weight * torch.exp(-self.linear_a)
+        # reward jerk
+        self.reward_jerk_weight = min(self.reward_jerk_weight_init + self.reward_jerk_weight_lr * self.count, self.reward_jerk_max)
+        reward_jerk = self.reward_jerk_weight * torch.exp(-self.linear_jerk)
 
         # spin reward, fixed z
         spin = torch.square(self.drone.vel_b[..., -1])
@@ -532,6 +546,8 @@ class Track(IsaacEnv):
             + reward_pos * (reward_up + reward_spin)
             + reward_action_norm
             + reward_action_smoothness
+            + reward_acc
+            + reward_jerk
         )
         
         self.stats['reward_pos'].add_(reward_pos)
