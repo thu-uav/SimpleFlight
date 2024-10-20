@@ -25,7 +25,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_mixed_norm_smooth0_5_init_pos_0_4T
+  run_name: Track_mixed_norm_smooth1
   # run_name: debug
   job_type: train
   entity: chenjy

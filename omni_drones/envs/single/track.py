@@ -340,8 +340,8 @@ class Track(IsaacEnv):
             self.traj_t0[env_ids] = torch.rand(env_ids.shape).to(self.device) * self.T_scale[env_ids] # 0 ~ T
         else:
             # self.traj_t0[env_ids] = torch.pi / 2
-            # self.traj_t0[env_ids] = 0.25 * self.T_scale[env_ids]
-            self.traj_t0[env_ids] = 0.4 * self.T_scale[env_ids]
+            self.traj_t0[env_ids] = 0.25 * self.T_scale[env_ids]
+            # self.traj_t0[env_ids] = 0.4 * self.T_scale[env_ids]
 
         t0 = torch.zeros(len(env_ids), device=self.device)
         pos, linear_v = lemniscate_v(t0 + self.traj_t0[env_ids], self.T_scale[env_ids])
