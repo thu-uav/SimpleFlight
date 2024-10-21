@@ -26,5 +26,6 @@ from .lee_position_controller import (
     LeePositionController,
     AttitudeController,
     RateController,
-    PIDRateController
+    PIDRateController,
+    PID_controller_flightmare,
 )

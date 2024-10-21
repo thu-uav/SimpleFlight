@@ -25,13 +25,13 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  # run_name: Track_mixed_norm_smooth0_5_init_rpy0
-  run_name: Hover
+  run_name: debug
+  # run_name: Hover_smooth2
   job_type: train
   entity: chenjy
   project: simpleflight
-  # mode: disabled
-  mode: online # set to 'disabled' when debugging locally, online
+  mode: disabled
+  # mode: online # set to 'disabled' when debugging locally, online
   run_id: 
   monitor_gym: True
   tags: 

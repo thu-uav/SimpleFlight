@@ -174,6 +174,13 @@ def main(cfg):
             transform = PIDRateController(controller)
             # transforms.append(TanhTransform)
             transforms.append(transform)
+        elif action_transform == "PIDrate_FM":
+            from omni_drones.controllers import PID_controller_flightmare as _PID_controller_flightmare
+            from omni_drones.utils.torchrl.transforms import PIDRateController_flightmare
+            controller = _PID_controller_flightmare(base_env.device).to(base_env.device)
+            transform = PIDRateController_flightmare(controller)
+            # transforms.append(TanhTransform)
+            transforms.append(transform)
         elif not action_transform.lower() == "none":
             raise NotImplementedError(f"Unknown action transform: {action_transform}")
     

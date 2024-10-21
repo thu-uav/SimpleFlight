@@ -202,7 +202,6 @@ class LeePositionController(nn.Module):
         cmd = (cmd / self.max_thrusts) * 2 - 1
         return cmd
 
-    
 class AttitudeController(nn.Module):
     r"""
     
@@ -298,7 +297,6 @@ class AttitudeController(nn.Module):
         cmd = (self.mixer @ angular_acc_thrust.T).T
         cmd = (cmd / self.max_thrusts) * 2 - 1
         return cmd
-
 
 class RateController(nn.Module):
     def __init__(self, g, uav_params) -> None:
@@ -430,6 +428,78 @@ class RateController(nn.Module):
         cmd = (self.mixer @ angacc_thrust.T).T
         cmd = (cmd / self.max_thrusts) * 2 - 1
         cmd = cmd.reshape(*batch_shape, -1)
+        return cmd
+
+class PID_controller_flightmare(nn.Module):
+    def __init__(self, device):
+        super().__init__()
+        self.P_gain = nn.Parameter(torch.tensor([0.11, 0.11, 0.2]))
+        self.I_gain = nn.Parameter(torch.tensor([0.008, 0.008, 0.01]))
+        self.D_gain = nn.Parameter(torch.tensor([0.00075, 0.00075, 0]))
+        self.FF_gain = nn.Parameter(torch.tensor([0.0, 0.0, 0.0]))
+        self.K = nn.Parameter(torch.tensor([1., 1., 1.]))
+        self.Int_lim = nn.Parameter(torch.tensor([1.00, 1.00, 1.00]))
+        self.fs, self.fc, self.dt = 50.0, 40.0, 0.01
+        self.init_flag = True # init last_body_rate and inte
+        self.allocation_matrix_inv = torch.tensor([[0.25, 2.82842865,-2.82842865, 15.625],
+                                                    [0.25,-2.82842865,-2.82842865,-15.625],
+                                                    [0.25,-2.82842865, 2.82842865, 15.625],
+                                                    [0.25, 2.82842865, 2.82842865,-15.625]], device=device)
+    
+    def forward(
+        self, 
+        root_state: torch.Tensor, 
+        target_rate: torch.Tensor,   # [rad/s] shape [64, 1]
+        target_thrust: torch.Tensor, # [ms-2]
+        reset_pid: torch.Tensor
+    ):
+        assert root_state.shape[:-1] == target_rate.shape[:-1]
+        batch_shape = root_state.shape[:-1]      # batch shape [64,1]
+        root_state = root_state.reshape(-1, 13)  # shape
+        target_rate = target_rate.reshape(-1, 3)
+        target_thrust = target_thrust.reshape(-1, 1)
+        reset_pid = reset_pid.reshape(-1)
+        device = root_state.device
+
+        pos, rot, linvel, angvel = root_state.split([3, 4, 3, 3], dim=1)
+        body_rate = quat_rotate_inverse(rot, angvel)
+        rate_error = target_rate - body_rate
+
+        # reset body rate memory and I memory
+        if self.init_flag:
+            device = root_state.device
+            self.last_body_rate = torch.zeros(size=(*batch_shape, 3)).to(device).reshape(-1, 3)
+            self.integ = torch.zeros(size=(*batch_shape, 3)).to(device).reshape(-1, 3)
+            self.init_flag = False
+        self.last_body_rate[reset_pid] = torch.zeros(size=(*batch_shape, 3)).to(device).reshape(-1, 3)[reset_pid]
+        self.integ[reset_pid] = torch.zeros(size=(*batch_shape, 3)).to(device).reshape(-1, 3).to(device)[reset_pid]
+        filted_body_rate = body_rate * 0.803307 + self.last_body_rate * 0.196693 # lowpass
+        angular_accel = (filted_body_rate - self.last_body_rate) / self.dt
+        angular_accel[torch.isnan(angular_accel)] = 0.0
+        
+        angacc_desire = self.K.view(1, -1) * (rate_error * self.P_gain.view(1, -1) +
+                                       self.integ * self.I_gain.view(1, -1) -
+                                       angular_accel * self.D_gain.view(1, -1))
+        angacc_desire[torch.isnan(angacc_desire)] = 0.0
+
+        self.last_body_rate = filted_body_rate.clone()
+
+        int_coef = torch.ones(rate_error.shape, device=device) - (rate_error / (2.5 * torch.pi)) ** 2 
+        int_coef = torch.maximum(int_coef, torch.zeros(int_coef.shape, device=device))
+        self.integ += rate_error * int_coef
+        self.integ = torch.clip(self.integ, -self.Int_lim, self.Int_lim)
+
+        # --------rate controller end, next comes mixer-------------
+        force_des = target_thrust * 0.977
+        thrust_and_ang_acc = torch.concatenate((force_des, angacc_desire), dim=-1) # [1,64,4]
+        thrust_and_ang_acc = thrust_and_ang_acc.unsqueeze(dim=-1) # [1,64,4,1]
+        motor_thrusts_des = torch.matmul(self.allocation_matrix_inv, thrust_and_ang_acc) # [1,64,4,1]
+        motor_thrusts_des = motor_thrusts_des.squeeze(-1) # [1,64,4]
+        motor_thrusts_des = torch.clip(motor_thrusts_des, 0, 15.73) # [0-16N]
+
+        # cmd = motor_thrusts_des.reshape(*batch_shape, -1) / 15.73 # -> [0-1]
+        cmd = 2 * motor_thrusts_des.reshape(*batch_shape, -1) / 15.73 - 1 # -> [-1~1]
+
         return cmd
 
 class PIDRateController(nn.Module):
