@@ -147,6 +147,10 @@ class Track(IsaacEnv):
             torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
             torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
         )
+        # self.init_rpy_dist = D.Uniform(
+        #     torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi,
+        #     torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi
+        # )
         self.traj_rpy_dist = D.Uniform(
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi
@@ -204,7 +208,7 @@ class Track(IsaacEnv):
         
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
 
-        self.traj_t0 = torch.pi / 2.0 * torch.ones(self.num_envs, device=self.device)
+        self.traj_t0 = torch.ones(self.num_envs, device=self.device)
         self.T_scale = torch.zeros(self.num_envs, device=self.device)
         self.traj_rot = torch.zeros(self.num_envs, 4, device=self.device)
 
@@ -434,7 +438,7 @@ class Track(IsaacEnv):
         
         self.rpos = self.target_pos - root_state[..., :3]
         if self.use_ab_wolrd_pos:
-            # pos, rpos, quat, linear velocity, body rate, heading, lateral, up
+            # pos, rpos, linear velocity, body rate, heading, lateral, up
             obs = [
                 root_state[..., :3],
                 self.rpos.flatten(1).unsqueeze(1),
@@ -442,7 +446,7 @@ class Track(IsaacEnv):
                 root_state[..., 16:19], root_state[..., 19:28],
             ]
         else:
-            # rpos, quat, linear velocity, body rate, heading, lateral, up
+            # rpos, linear velocity, body rate, heading, lateral, up
             obs = [
                 self.rpos.flatten(1).unsqueeze(1),
                 root_state[..., 7:10],

@@ -25,8 +25,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_mixed_norm_smooth1
-  # run_name: debug
+  # run_name: Track_mixed_norm_smooth0_5_init_rpy0
+  run_name: Hover
   job_type: train
   entity: chenjy
   project: simpleflight
@@ -37,6 +37,7 @@ wandb:
   tags: 
 
 defaults:
-  - task: Track
+  # - task: Track
+  - task: Hover
   - algo: mappo
   - _self_
