@@ -25,7 +25,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Hover_rpos_quat_linearv_rotation
+  run_name: Hover_rpos_quat_linearv_rotation_wotime
   # run_name: Hover_quat_rotation_matrix_body_rate_smooth0
   job_type: train
   entity: chenjy

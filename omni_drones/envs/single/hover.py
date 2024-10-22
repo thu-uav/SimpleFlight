@@ -207,8 +207,6 @@ class Hover(IsaacEnv):
     def _set_specs(self):
         # drone_state_dim = self.drone.state_spec.shape[-1]
         observation_dim = 19 # rpos, quat, linear v, heading, lateral, up
-        # observation_dim = 22 # rpos, quat, linear v, body rate, heading, lateral, up
-        # observation_dim = 3 + 3 + 3 + 3 + 3 + 3 # position, linear velocity, body rate, heading, lateral, up
 
         if self.cfg.task.omega:
             observation_dim += 3

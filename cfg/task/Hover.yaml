@@ -25,7 +25,7 @@ action_history_step: 5
 # observation options
 omega: false
 motor: false
-time_encoding: true
+time_encoding: false
 
 action_transform: PIDrate
 # action_transform: PIDrate_FM
