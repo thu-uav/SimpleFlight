@@ -6,13 +6,13 @@ defaults:
   - /base/sim_base@_here_
 
 env:
-  num_envs: 100
+  num_envs: 4096
   max_episode_length: 500
 
 drone_model: crazyflie
 force_sensor: false
 
-reward_action_smoothness_weight: 2.0
+reward_action_smoothness_weight: 0.0
 reward_distance_scale: 10.0
 
 # flag
@@ -27,8 +27,8 @@ omega: false
 motor: false
 time_encoding: true
 
-# action_transform: PIDrate
-action_transform: PIDrate_FM
+action_transform: PIDrate
+# action_transform: PIDrate_FM
 # action_transform: rate
 
 # sim2real options

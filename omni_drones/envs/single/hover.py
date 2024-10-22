@@ -82,6 +82,7 @@ class Hover(IsaacEnv):
         self.time_encoding = cfg.task.time_encoding
         self.use_eval = cfg.task.use_eval
         self.use_disturbance = cfg.task.use_disturbance
+        self.sim_data = []
         
         self.randomization = cfg.task.get("randomization", {})
         self.has_payload = "payload" in self.randomization.keys()
@@ -140,8 +141,8 @@ class Hover(IsaacEnv):
         
         if self.use_eval:
             self.init_pos_dist = D.Uniform(
-                torch.tensor([0.5, 0.5, 1.5], device=self.device),
-                torch.tensor([0.5, 0.5, 1.5], device=self.device)
+                torch.tensor([0.0, 0.1, 0.0], device=self.device),
+                torch.tensor([0.0, 0.1, 0.0], device=self.device)
             )
             self.init_rpy_dist = D.Uniform(
                 torch.tensor([0.0, 0.0, 0.0], device=self.device) * torch.pi,
@@ -205,7 +206,9 @@ class Hover(IsaacEnv):
 
     def _set_specs(self):
         # drone_state_dim = self.drone.state_spec.shape[-1]
-        observation_dim = 3 + 3 + 3 + 3 + 3 + 3 # position, linear velocity, body rate, heading, lateral, up
+        observation_dim = 19 # rpos, quat, linear v, heading, lateral, up
+        # observation_dim = 22 # rpos, quat, linear v, body rate, heading, lateral, up
+        # observation_dim = 3 + 3 + 3 + 3 + 3 + 3 # position, linear velocity, body rate, heading, lateral, up
 
         if self.cfg.task.omega:
             observation_dim += 3
@@ -380,21 +383,20 @@ class Hover(IsaacEnv):
         self.root_state = self.drone.get_state()
         self.info["drone_state"][:] = self.root_state[..., :13]
 
-        _, log_rot, _, log_angvel = self.root_state[..., :13].reshape(-1, 13).split([3, 4, 3, 3], dim=1)
-        # body_rate = quat_rotate_inverse(log_rot, log_angvel).unsqueeze(1) * 180.0 / torch.pi
-
         # relative position and heading
         self.rpos = self.target_pos - self.root_state[..., :3]
         self.rheading = self.target_heading - self.root_state[..., 13:16]
         
-        # obs = [self.rpos, self.root_state[..., 3:10], self.root_state[..., 13:19],]
+        # (relative) position, quat, linear velocity, body rate, heading, lateral, up
+        # obs = [self.rpos, self.root_state[..., 3:10], self.root_state[..., 16:19], self.root_state[..., 19:28],]
+        obs = [self.rpos, self.root_state[..., 3:10], self.root_state[..., 19:28],]
 
-        obs = [
-            self.rpos,
-            self.root_state[..., 7:10],
-            self.root_state[..., 16:19], self.root_state[..., 19:28], 
-            # (relative) position, linear velocity, body rate, heading, lateral, up
-        ]        
+        # obs = [
+        #     self.rpos,
+        #     self.root_state[..., 7:10],
+        #     self.root_state[..., 16:19], self.root_state[..., 19:28], 
+        #     # (relative) position, linear velocity, body rate, heading, lateral, up
+        # ]        
 
         if self.cfg.task.omega:
             obs.append(self.root_state[..., 10:13])
@@ -442,6 +444,8 @@ class Hover(IsaacEnv):
         self.last_angular_jerk = self.angular_jerk.clone()
         
         obs = torch.cat(obs, dim=-1)
+        
+        # self.sim_data.append(obs[0])
 
         # add throttle to critic
         if self.use_rotor2critic:
@@ -509,6 +513,9 @@ class Hover(IsaacEnv):
             (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
             # | done_misbehave
         )
+        
+        if done[0]:
+            torch.save(self.sim_data, 'sim.pt')
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats['action_error_order1_mean'].div_(
