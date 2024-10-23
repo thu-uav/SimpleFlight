@@ -247,7 +247,7 @@ class Track(IsaacEnv):
         if self.use_ab_wolrd_pos:
             drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
         else:
-            drone_state_dim = 3 + 3 + 3 + 3 + 3 # linear vel, body rate, heading, lateral, up
+            drone_state_dim = 3 + 3 + 3 + 3 # linear vel, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         if self.time_encoding:
             self.time_encoding_dim = 4
@@ -372,9 +372,7 @@ class Track(IsaacEnv):
         cmd_init = 2.0 * (self.drone.throttle[env_ids]) ** 2 - 1.0
         max_thrust_ratio = self.drone.params['max_thrust_ratio']
         self.info['prev_action'][env_ids, :, 3] = (0.5 * (max_thrust_ratio + cmd_init)).mean(dim=-1)
-        # self.info['prev_prev_action'][env_ids, :, 3] = (0.5 * (max_thrust_ratio + cmd_init)).mean(dim=-1)
         self.prev_actions[env_ids] = self.info['prev_action'][env_ids]
-        # self.prev_prev_actions[env_ids] = self.info['prev_prev_action'][env_ids]
         
         # add init_action to self.action_history_buffer
         for _ in range(self.action_history):
@@ -450,8 +448,8 @@ class Track(IsaacEnv):
             obs = [
                 self.rpos.flatten(1).unsqueeze(1),
                 root_state[..., 7:10],
-                root_state[..., 16:19], root_state[..., 19:28],
-                # root_state[..., 19:28],
+                # root_state[..., 16:19], root_state[..., 19:28],
+                root_state[..., 19:28],
             ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:
@@ -533,7 +531,8 @@ class Track(IsaacEnv):
 
         # reward action smooth
         self.reward_action_smoothness_weight = min(self.reward_action_smoothness_weight_init + self.reward_action_smoothness_weight_lr * self.count, self.reward_smoothness_max)
-        reward_action_smoothness = self.reward_action_smoothness_weight * torch.exp(-self.action_error_order1)
+        not_begin_flag = (self.progress_buf > 1).unsqueeze(1)
+        reward_action_smoothness = self.reward_action_smoothness_weight * torch.exp(-self.action_error_order1) * not_begin_flag.float()
         
         # reward acc
         self.reward_acc_weight = min(self.reward_acc_weight_init + self.reward_acc_weight_lr * self.count, self.reward_acc_max)
