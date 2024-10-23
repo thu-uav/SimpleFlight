@@ -247,8 +247,7 @@ class Track(IsaacEnv):
         if self.use_ab_wolrd_pos:
             drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
         else:
-            # drone_state_dim = 3 + 3 + 3 + 3 + 3 # linear vel, body rate, heading, lateral, up
-            drone_state_dim = 3 + 3 + 3 + 3 # linear vel, heading, lateral, up
+            drone_state_dim = 3 + 3 + 3 + 3 + 3 # linear vel, body rate, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         if self.time_encoding:
             self.time_encoding_dim = 4
@@ -451,8 +450,8 @@ class Track(IsaacEnv):
             obs = [
                 self.rpos.flatten(1).unsqueeze(1),
                 root_state[..., 7:10],
-                # root_state[..., 16:19], root_state[..., 19:28],
-                root_state[..., 19:28],
+                root_state[..., 16:19], root_state[..., 19:28],
+                # root_state[..., 19:28],
             ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:
