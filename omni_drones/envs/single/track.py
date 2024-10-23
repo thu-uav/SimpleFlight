@@ -120,6 +120,7 @@ class Track(IsaacEnv):
         self.use_random_init = cfg.task.use_random_init
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
         self.use_vel_init = cfg.task.use_vel_init
+        self.sim_data = []
 
         super().__init__(cfg, headless)
 
@@ -247,6 +248,7 @@ class Track(IsaacEnv):
         if self.use_ab_wolrd_pos:
             drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
         else:
+            # drone_state_dim = 3 + 3 + 3 + 3 + 3 # linear vel, body rate, heading, lateral, up
             drone_state_dim = 3 + 3 + 3 + 3 # linear vel, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         if self.time_encoding:
@@ -492,6 +494,8 @@ class Track(IsaacEnv):
         
         obs = torch.cat(obs, dim=-1)
         
+        self.sim_data.append(obs[0])
+        
         # add throttle to critic
         if self.use_rotor2critic:
             state = torch.concat([obs, self.drone.throttle], dim=-1).squeeze(1)
@@ -566,6 +570,9 @@ class Track(IsaacEnv):
             | (self.drone.pos[..., 2] < 0.1)
             # | (distance > self.reset_thres)
         )
+        
+        if done[0]:
+            torch.save(self.sim_data, 'sim.pt')
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats["tracking_error"].div_(
