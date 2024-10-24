@@ -248,11 +248,12 @@ class Track(IsaacEnv):
         if self.use_ab_wolrd_pos:
             drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
         else:
-            # drone_state_dim = 3 + 3 + 3 + 3 + 3 # linear vel, body rate, heading, lateral, up
-            drone_state_dim = 3 + 3 + 3 + 3 # linear vel, heading, lateral, up
+            # drone_state_dim = 4 + 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
+            drone_state_dim = 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
+        
+        self.time_encoding_dim = 4
         if self.time_encoding:
-            self.time_encoding_dim = 4
             obs_dim += self.time_encoding_dim
         if self.intrinsics:
             obs_dim += sum(spec.shape[-1] for name, spec in self.drone.info_spec.items())
@@ -347,7 +348,6 @@ class Track(IsaacEnv):
         else:
             # self.traj_t0[env_ids] = torch.pi / 2
             self.traj_t0[env_ids] = 0.25 * self.T_scale[env_ids]
-            # self.traj_t0[env_ids] = 0.4 * self.T_scale[env_ids]
 
         t0 = torch.zeros(len(env_ids), device=self.device)
         pos, linear_v = lemniscate_v(t0 + self.traj_t0[env_ids], self.T_scale[env_ids])
@@ -449,9 +449,9 @@ class Track(IsaacEnv):
             # rpos, linear velocity, body rate, heading, lateral, up
             obs = [
                 self.rpos.flatten(1).unsqueeze(1),
-                root_state[..., 7:10],
-                # root_state[..., 16:19], root_state[..., 19:28],
-                root_state[..., 19:28],
+                # root_state[..., 3:7], # quat
+                root_state[..., 7:10], # linear v
+                root_state[..., 19:28], # rotation
             ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:
@@ -494,13 +494,9 @@ class Track(IsaacEnv):
         
         obs = torch.cat(obs, dim=-1)
         
-        self.sim_data.append(obs[0])
-        
-        # add throttle to critic
-        if self.use_rotor2critic:
-            state = torch.concat([obs, self.drone.throttle], dim=-1).squeeze(1)
-        else:
-            state = obs.squeeze(1)
+        # add time encoding
+        t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
+        state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
         
         # add action history to actor
         if self.action_history > 0:
@@ -570,9 +566,6 @@ class Track(IsaacEnv):
             | (self.drone.pos[..., 2] < 0.1)
             # | (distance > self.reset_thres)
         )
-        
-        if done[0]:
-            torch.save(self.sim_data, 'sim.pt')
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats["tracking_error"].div_(

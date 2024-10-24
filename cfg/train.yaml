@@ -6,7 +6,7 @@ sim: ${task.sim}
 env: ${task.env}
 
 # model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_slow_lr0/08-18_21-27/wandb/run-20240818_212757-b3ubojde/files/checkpoint_1494482944.pt
-# model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_mixed_norm_smooth1/10-23_16-10/wandb/run-20241023_161034-ujo07zsg/files/checkpoint_1284767744.pt
+# model_dir: /home/chenjy/OmniDrones/scripts/outputs/Track_slow_sanity_check_all_reward_critic_time_quat_linearv_rotation_future4/10-24_20-10/wandb/run-20241024_201028-t0p73vij/files/checkpoint_1442054144.pt
 model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
@@ -25,8 +25,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_slow_wo_body_rate_smooth0_5_wo_spin
-  # run_name: Track_mixed_norm_smooth1_old_version_evalfast
+  run_name: Track_slow_sanity_check_woquat
+  # run_name: debug
   job_type: train
   entity: chenjy
   project: simpleflight

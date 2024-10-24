@@ -19,7 +19,7 @@ latency_step: 1
 random_latency: false
 
 reset_thres: 1.
-future_traj_steps: 10
+future_traj_steps: 4
 
 use_eval: 0
 use_rotor2critic: 0 # need to set critic_input = 'state'
@@ -32,9 +32,9 @@ use_random_init: false
 # init vel
 use_vel_init: false
 # up
-reward_up_weight: 0.0
+reward_up_weight: 1.0
 # spin
-reward_spin_weight: 0.0
+reward_spin_weight: 1.0
 # acc
 reward_acc_weight_init: 0.0
 reward_acc_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
@@ -44,9 +44,9 @@ reward_jerk_weight_init: 0.0
 reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
 reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 0.5
+reward_action_smoothness_weight_init: 0.0
 reward_action_smoothness_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 0.5
+reward_smoothness_max: 0.0
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
