@@ -336,7 +336,7 @@ class Track(IsaacEnv):
         self.random_latency = self.cfg.task.random_latency
         self.latency = self.cfg.task.latency_step if self.cfg.task.latency else 0
         # self.obs_buffer = collections.deque(maxlen=self.latency)
-        self.root_state_buffer = collections.deque(maxlen=self.latency)
+        self.root_state_buffer = collections.deque(maxlen=self.latency + 1)
         
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
