@@ -6,8 +6,8 @@ sim: ${task.sim}
 env: ${task.env}
 
 # model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_slow_lr0/08-18_21-27/wandb/run-20240818_212757-b3ubojde/files/checkpoint_1494482944.pt
-model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_mixed_baseline.pt
-# model_dir: null
+# model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_mixed_baseline.pt
+model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
 max_iters: -1
