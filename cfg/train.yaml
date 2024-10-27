@@ -6,8 +6,8 @@ sim: ${task.sim}
 env: ${task.env}
 
 # model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_slow_lr0/08-18_21-27/wandb/run-20240818_212757-b3ubojde/files/checkpoint_1494482944.pt
-# model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_mixed_baseline/10-25_00-36/wandb/run-20241025_003611-kf6mp97v/files/checkpoint_7602438144.pt
-model_dir: null
+model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_mixed_baseline.pt
+# model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
 max_iters: -1
@@ -25,8 +25,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_mixed_latency1
-  # run_name: debug
+  run_name: DATT_zigzag
+  # run_name: debug_zigzag_datt
   job_type: train
   entity: chenjy
   project: simpleflight
@@ -37,7 +37,8 @@ wandb:
   tags: 
 
 defaults:
-  - task: Track
+  # - task: Track
+  - task: Track_datt
   # - task: Hover
   - algo: mappo
   - _self_

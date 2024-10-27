@@ -37,6 +37,7 @@ from torchrl.data import UnboundedContinuousTensorSpec, CompositeSpec
 from omni.isaac.debug_draw import _debug_draw
 
 from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
+from ..utils.datt_traj import RandomZigzag
 import collections
 import numpy as np
 
@@ -120,7 +121,8 @@ class Track(IsaacEnv):
         self.use_random_init = cfg.task.use_random_init
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
         self.use_vel_init = cfg.task.use_vel_init
-        self.sim_data = []
+        self.target_rpy = []
+        self.real_rpy = []
 
         super().__init__(cfg, headless)
 
@@ -398,6 +400,7 @@ class Track(IsaacEnv):
     def _pre_sim_step(self, tensordict: TensorDictBase):
         actions = tensordict[("agents", "action")]
         self.info["prev_action"] = tensordict[("info", "prev_action")]
+        self.info["policy_action"] = tensordict[("info", "policy_action")]
         # self.info["prev_prev_action"] = tensordict[("info", "prev_prev_action")]
         self.policy_actions = tensordict[("info", "policy_action")].clone()
         self.prev_actions = self.info["prev_action"].clone()
@@ -498,6 +501,9 @@ class Track(IsaacEnv):
         t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
         state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
         
+        self.target_rpy.append(self.info['policy_action'].clone())
+        self.real_rpy.append(self.drone.vel_b[..., 3:].clone())
+        
         # add action history to actor
         if self.action_history > 0:
             self.action_history_buffer.append(self.prev_actions)
@@ -566,6 +572,10 @@ class Track(IsaacEnv):
             | (self.drone.pos[..., 2] < 0.1)
             # | (distance > self.reset_thres)
         )
+        
+        if done[0]:
+            torch.save(self.target_rpy, 'target_rpy.pt')
+            torch.save(self.real_rpy, 'real_rpy.pt')
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats["tracking_error"].div_(
@@ -620,13 +630,12 @@ class Track(IsaacEnv):
     def _compute_traj(self, steps: int, env_ids=None, step_size: float=1.):
         if env_ids is None:
             env_ids = ...
+        # discrete t
         t = self.progress_buf[env_ids].unsqueeze(1) + step_size * torch.arange(steps, device=self.device)
+        # t: [num_envs, steps], continuous t
         t = self.traj_t0[env_ids].unsqueeze(1) + t * self.dt
-        # traj_rot = self.traj_rot[env_ids].unsqueeze(1).expand(-1, t.shape[1], 4)
-        
+        # target_pos: [num_envs, steps, 3]
         target_pos, _ = vmap(lemniscate_v)(t, self.T_scale[env_ids].unsqueeze(-1))
-        # target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos) * self.traj_scale[env_ids].unsqueeze(1)
-        # target_pos = vmap(torch_utils.quat_rotate)(traj_rot, target_pos)
 
         return self.origin + target_pos
 
