@@ -27,7 +27,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_mixed_smoothlr00005_br_pi
+  run_name: Track_mixed_norm_smooth5_br_pi
   # run_name: debug
   job_type: train
   entity: chenjy
