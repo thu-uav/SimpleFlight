@@ -6,11 +6,7 @@ defaults:
   - /base/sim_base@_here_
 
 env:
-<<<<<<< HEAD
   num_envs: 8192
-=======
-  num_envs: 4096
->>>>>>> b96d864c9e42f2482ae38b71bfb451d207897205
   max_episode_length: 1000
 
 drone_model: Crazyflie
@@ -26,10 +22,7 @@ reset_thres: 1.
 future_traj_steps: 4
 
 use_eval: 0
-<<<<<<< HEAD
 use_fixed_ref: false
-=======
->>>>>>> b96d864c9e42f2482ae38b71bfb451d207897205
 use_rotor2critic: 0 # need to set critic_input = 'state'
 use_action_history: false
 action_history_step: 5

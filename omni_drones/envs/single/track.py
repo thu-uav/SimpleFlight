@@ -498,10 +498,7 @@ class Track(IsaacEnv):
         # add time encoding
         t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
         state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
-        
-        self.target_rpy.append(self.info['policy_action'].clone())
-        self.real_rpy.append(self.drone.vel_b[..., 3:].clone())
-        
+                
         # add action history to actor
         if self.action_history > 0:
             self.action_history_buffer.append(self.prev_actions)
