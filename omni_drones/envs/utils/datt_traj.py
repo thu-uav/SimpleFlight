@@ -632,7 +632,6 @@ if __name__ == '__main__':
     t = t.repeat(num_envs, 1) # t: [num_envs, step], 比如此时step = 400, 0~10s内取400个点
     env_ids = torch.arange(num_envs)
     ref.pos(t, env_ids=env_ids)
-    breakpoint()
 
     idx = 1
     plt.subplot(2, 1, 1)
