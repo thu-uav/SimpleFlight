@@ -5,8 +5,10 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/zanghongzhi/isaac_ws/OmniDrones/scripts/outputs/Track_slow_lr0/08-18_21-27/wandb/run-20240818_212757-b3ubojde/files/checkpoint_1494482944.pt
-# model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_mixed_baseline/10-25_00-36/wandb/run-20241025_003611-kf6mp97v/files/checkpoint_7602438144.pt
+# model_dir: /home/jiayu/OmniDrones/scripts/outputs/slow_smooth0_2.pt
+# model_dir: /home/jiayu/OmniDrones/scripts/outputs/normal_smooth1.pt
+# model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_fast_smooth5/10-26_12-08/wandb/run-20241026_120850-ublel2iw/files/checkpoint_final.pt
+# model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_fast_smoothlr00005/10-28_21-42/wandb/run-20241028_214236-8pyr34v7/files/checkpoint_6973554688.pt
 model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
@@ -25,7 +27,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_mixed_latency1
+  run_name: Track_mixed_smoothlr00005_br_pi
   # run_name: debug
   job_type: train
   entity: chenjy

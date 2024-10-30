@@ -121,6 +121,8 @@ class Track(IsaacEnv):
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
         self.use_vel_init = cfg.task.use_vel_init
         self.sim_data = []
+        self.sim_rpy = []
+        self.action_data = []
 
         super().__init__(cfg, headless)
 
@@ -157,9 +159,6 @@ class Track(IsaacEnv):
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi
         )
 
-        # slow, 1500 steps
-        # normal, 550 steps
-        # fast, 350 steps
         if self.trajectory_scale == 'slow':
             self.T_scale_dist = D.Uniform(
                 torch.tensor(14.8, device=self.device),
@@ -249,7 +248,7 @@ class Track(IsaacEnv):
             drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
         else:
             # drone_state_dim = 4 + 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
-            drone_state_dim = 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
+            drone_state_dim = 3 + 3 + 3 + 3 # linear vel, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         
         self.time_encoding_dim = 4
@@ -504,6 +503,9 @@ class Track(IsaacEnv):
             all_action_history = torch.concat(list(self.action_history_buffer), dim=-1)
             obs = torch.cat([obs, all_action_history], dim=-1)
 
+        if self.use_eval:
+            self.sim_data.append(obs[0].clone())
+
         return TensorDict({
             "agents": {
                 "observation": obs,
@@ -566,6 +568,14 @@ class Track(IsaacEnv):
             | (self.drone.pos[..., 2] < 0.1)
             # | (distance > self.reset_thres)
         )
+        
+        if self.use_eval:
+            self.sim_rpy.append(self.drone.vel_b[0, :, 3:].clone())
+            self.action_data.append(self.policy_actions[0].clone())
+            if done[0]:
+                torch.save(self.sim_data, 'sim_state.pt')
+                torch.save(self.sim_rpy, 'sim_rpy.pt')
+                torch.save(self.action_data, 'sim_action.pt')
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats["tracking_error"].div_(
