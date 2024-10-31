@@ -23,6 +23,8 @@ future_traj_steps: 4
 
 use_eval: 0
 use_rotor2critic: 0 # need to set critic_input = 'state'
+use_obs_noise: 0
+obs_noise_scale: 0.1
 use_action_history: false
 action_history_step: 5
 # add pos to obs
@@ -44,13 +46,13 @@ reward_jerk_weight_init: 0.0
 reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
 reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 5.0
+reward_action_smoothness_weight_init: 1.0
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 5.0
+reward_smoothness_max: 1.0
 # action norm
-reward_action_norm_weight_init: 5.0
+reward_action_norm_weight_init: 1.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
-reward_norm_max: 5.0
+reward_norm_max: 1.0
 # distance
 reward_distance_scale: 5.0
 trajectory_scale: 'mixed' # 'slow', 'normal', 'fast'

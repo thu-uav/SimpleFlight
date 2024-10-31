@@ -5,8 +5,8 @@ import pandas as pd
 
 start_T = 0
 # sim data
-sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/normal/sim_action.pt')
-sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/normal/sim_rpy.pt')
+sim_target = torch.load('/home/jiayu/OmniDrones/scripts/sim_action.pt')
+sim_real = torch.load('/home/jiayu/OmniDrones/scripts/sim_rpy.pt')
 sim_target_rpy = torch.stack(sim_target)[:, 0, :3].to('cpu').numpy()[start_T:] * np.pi
 sim_target_thrust = torch.stack(sim_target)[:, 0, 3].to('cpu')[start_T:]
 sim_target_thrust = torch.clamp((sim_target_thrust + 1) / 2, min = 0.0, max = 0.9).numpy() * 2**16

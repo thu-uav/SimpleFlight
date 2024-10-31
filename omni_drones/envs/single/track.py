@@ -121,6 +121,8 @@ class Track(IsaacEnv):
         self.use_random_init = cfg.task.use_random_init
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
         self.use_vel_init = cfg.task.use_vel_init
+        self.use_obs_noise = cfg.task.use_obs_noise
+        self.obs_noise_scale = cfg.task.obs_noise_scale
         self.sim_data = []
         self.sim_rpy = []
         self.action_data = []
@@ -494,6 +496,9 @@ class Track(IsaacEnv):
         self.last_angular_jerk = self.angular_jerk.clone()
         
         obs = torch.cat(obs, dim=-1)
+
+        if self.use_obs_noise:
+            obs *= torch.randn(obs.shape, device=self.device) * self.obs_noise_scale + 1 # add a gaussian noise of mean 0 and variance self.obs_noise_scale**2
         
         # add time encoding
         t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
