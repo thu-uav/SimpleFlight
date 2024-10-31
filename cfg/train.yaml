@@ -8,7 +8,7 @@ env: ${task.env}
 # model_dir: /home/jiayu/OmniDrones/scripts/outputs/slow_smooth0_2.pt
 # model_dir: /home/jiayu/OmniDrones/scripts/outputs/normal_smooth1.pt
 # model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_fast_smooth5/10-26_12-08/wandb/run-20241026_120850-ublel2iw/files/checkpoint_final.pt
-# model_dir: /home/jiayu/OmniDrones/scripts/outputs/Track_mixed_norm_smooth5_br_pi/10-30_21-29/wandb/run-20241030_212951-1cngyc0u/files/checkpoint_6868697088.pt
+# model_dir: /home/jiayu/OmniDrones/scripts/outputs/slow_smooth0_2.pt
 model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
@@ -27,8 +27,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: Track_mixed_wo_aux_br_pi
-  # run_name: debug
+  run_name: Track_slow_smooth0_2_initrpy0
+  # run_name: eval_normal
   job_type: train
   entity: chenjy
   project: simpleflight

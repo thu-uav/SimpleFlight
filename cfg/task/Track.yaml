@@ -37,6 +37,8 @@ use_vel_init: false
 reward_up_weight: 1.0
 # spin
 reward_spin_weight: 1.0
+# yaw penalty
+reward_yaw_weight: 0.0
 # acc
 reward_acc_weight_init: 0.0
 reward_acc_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
@@ -46,16 +48,16 @@ reward_jerk_weight_init: 0.0
 reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
 reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 0.0
+reward_action_smoothness_weight_init: 0.2
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 0.0
+reward_smoothness_max: 0.2
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
 reward_norm_max: 0.0
 # distance
 reward_distance_scale: 5.0
-trajectory_scale: 'mixed' # 'slow', 'normal', 'fast'
+trajectory_scale: 'slow' # 'slow', 'normal', 'fast'
 
 action_transform: PIDrate
 # history: true

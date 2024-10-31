@@ -40,6 +40,7 @@ from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
 from ..utils.datt_traj import RandomZigzag
 import collections
 import numpy as np
+from omni_drones.utils.torch import quaternion_to_euler
 
 class Track(IsaacEnv):
     r"""
@@ -117,6 +118,7 @@ class Track(IsaacEnv):
         self.action_history_step = cfg.task.action_history_step
         self.trajectory_scale = cfg.task.trajectory_scale # 'slow', 'normal', 'fast'
         self.reward_spin_weight = cfg.task.reward_spin_weight
+        self.reward_yaw_weight = cfg.task.reward_yaw_weight
         self.reward_up_weight = cfg.task.reward_up_weight
         self.use_random_init = cfg.task.use_random_init
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
@@ -149,14 +151,14 @@ class Track(IsaacEnv):
             self.wind_w = torch.zeros(self.num_envs, 3, 8, device=self.device)
             self.wind_i = torch.zeros(self.num_envs, 1, device=self.device)
         
-        self.init_rpy_dist = D.Uniform(
-            torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
-            torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
-        )
         # self.init_rpy_dist = D.Uniform(
-        #     torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi,
-        #     torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi
+        #     torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
+        #     torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
         # )
+        self.init_rpy_dist = D.Uniform(
+            torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi,
+            torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi
+        )
         self.traj_rpy_dist = D.Uniform(
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi
@@ -562,9 +564,13 @@ class Track(IsaacEnv):
         spin = torch.square(self.drone.vel_b[..., -1])
         reward_spin = self.reward_spin_weight * 0.5 / (1.0 + torch.square(spin))
 
+        # yaw reward
+        rpy = quaternion_to_euler(self.drone.rot)
+        reward_yaw = self.reward_yaw_weight * 0.5 / (1.0 + torch.square(rpy[..., -1]))
+
         reward = (
             reward_pos
-            + reward_pos * (reward_up + reward_spin)
+            + reward_pos * (reward_up + reward_spin + reward_yaw)
             + reward_action_norm
             + reward_action_smoothness
             + reward_acc
