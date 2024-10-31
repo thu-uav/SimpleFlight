@@ -266,6 +266,9 @@ class Track(IsaacEnv):
 
         state_dim = obs_dim + 4
         
+        if self.use_throttle2critic:
+            state_dim += 4
+        
         if self.action_history > 0:
             obs_dim += self.action_history * 4
         

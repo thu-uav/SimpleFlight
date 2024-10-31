@@ -23,7 +23,7 @@ future_traj_steps: 4
 
 use_eval: 0
 use_throttle2critic: 0 # need to set critic_input = 'state'
-use_obs_noise: false
+use_obs_noise: 0
 obs_noise_scale: 0.1 # var = 0.1 ** 2
 use_action_history: false
 action_history_step: 5
