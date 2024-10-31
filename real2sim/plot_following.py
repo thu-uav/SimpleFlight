@@ -37,16 +37,16 @@ real_time_steps = np.arange(len(real_real_rpy))
 fig, axs = plt.subplots(3, 2, figsize=(12, 8))
 
 # sim roll, pitch, yaw
-axs[0,0].plot(time_steps, sim_target_rpy[:, 0], label='sim target roll rate')
 axs[0,0].plot(time_steps, sim_real_rpy[:, 0], label='sim roll rate')
+axs[0,0].plot(time_steps, sim_target_rpy[:, 0], label='sim target roll rate')
 axs[0,0].legend()
 
-axs[1,0].plot(time_steps, sim_target_rpy[:, 1], label='sim target pitch rate')
 axs[1,0].plot(time_steps, sim_real_rpy[:, 1], label='sim pitch rate')
+axs[1,0].plot(time_steps, sim_target_rpy[:, 1], label='sim target pitch rate')
 axs[1,0].legend()
 
-axs[2,0].plot(time_steps, sim_target_rpy[:, 2], label='sim target yaw rate')
 axs[2,0].plot(time_steps, sim_real_rpy[:, 2], label='sim yaw rate')
+axs[2,0].plot(time_steps, sim_target_rpy[:, 2], label='sim target yaw rate')
 axs[2,0].legend()
 
 # real roll, pitch, yaw

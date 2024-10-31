@@ -113,7 +113,7 @@ class Track(IsaacEnv):
         self.wind = cfg.task.wind
         self.use_eval = cfg.task.use_eval
         self.num_drones = 1
-        self.use_rotor2critic = cfg.task.use_rotor2critic
+        self.use_throttle2critic = cfg.task.use_throttle2critic
         self.action_history_step = cfg.task.action_history_step
         self.trajectory_scale = cfg.task.trajectory_scale # 'slow', 'normal', 'fast'
         self.reward_spin_weight = cfg.task.reward_spin_weight
@@ -497,13 +497,18 @@ class Track(IsaacEnv):
         
         obs = torch.cat(obs, dim=-1)
 
-        if self.use_obs_noise:
-            obs *= torch.randn(obs.shape, device=self.device) * self.obs_noise_scale + 1 # add a gaussian noise of mean 0 and variance self.obs_noise_scale**2
-        
         # add time encoding
         t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
         state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
-                
+
+        if self.use_throttle2critic:
+            # add throttle to critic, throttle is the ground truth, w.o. action noise
+            state = torch.concat([state, self.root_state[:, 0, 28:]], dim=-1)
+
+        # state: ground truth, obs: add noise
+        if self.use_obs_noise:
+            obs *= torch.randn(obs.shape, device=self.device) * self.obs_noise_scale + 1 # add a gaussian noise of mean 0 and variance self.obs_noise_scale**2
+    
         # add action history to actor
         if self.action_history > 0:
             self.action_history_buffer.append(self.prev_actions)
