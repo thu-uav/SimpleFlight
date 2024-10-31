@@ -249,6 +249,7 @@ class Track(IsaacEnv):
         return ["/World/defaultGroundPlane"]
     
     def _set_specs(self):
+        self.use_obs_norm = self.cfg.task.use_obs_norm
         if self.use_ab_wolrd_pos:
             drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
         else:
@@ -261,6 +262,17 @@ class Track(IsaacEnv):
             obs_dim += self.time_encoding_dim
         if self.intrinsics:
             obs_dim += sum(spec.shape[-1] for name, spec in self.drone.info_spec.items())
+        
+        if self.use_obs_norm:
+            rpos_range = [0.2, 0.2, 0.2] * self.future_traj_steps
+            if self.trajectory_scale == 'slow':
+                vel_range = [0.5, 0.5, 0.5]
+            elif self.trajectory_scale == 'normal':
+                vel_range = [2.0, 2.0, 2.0]
+            else:
+                vel_range = [3.0, 3.0, 3.0]
+            rotation_range = [1.0] * 9
+            self.obs_norm_range = torch.tensor(rpos_range + vel_range + rotation_range).to(self.device)
         
         # action history
         self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
@@ -327,6 +339,7 @@ class Track(IsaacEnv):
             "angular_a_mean": UnboundedContinuousTensorSpec(1),
             "linear_jerk_mean": UnboundedContinuousTensorSpec(1),
             "angular_jerk_mean": UnboundedContinuousTensorSpec(1),
+            "obs_range": UnboundedContinuousTensorSpec(1),
         }).expand(self.num_envs).to(self.device)
         info_spec = CompositeSpec({
             "drone_state": UnboundedContinuousTensorSpec((self.drone.n, 13), device=self.device),
@@ -501,6 +514,11 @@ class Track(IsaacEnv):
         self.last_angular_jerk = self.angular_jerk.clone()
         
         obs = torch.cat(obs, dim=-1)
+        
+        if self.use_obs_norm:
+            obs = obs / self.obs_norm_range.unsqueeze(0).unsqueeze(0).repeat(self.num_envs, 1, 1)
+
+        self.stats["obs_range"] = torch.max(torch.abs(obs), dim=-1).values
 
         # add time encoding
         t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
