@@ -516,23 +516,26 @@ class Track(IsaacEnv):
 
         self.stats["obs_range"] = torch.max(torch.abs(obs), dim=-1).values
 
-        # add time encoding
-        t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
-        state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
-
-        if self.use_throttle2critic:
-            # add throttle to critic, throttle is the ground truth, w.o. action noise
-            state = torch.concat([state, self.root_state[:, 0, 28:]], dim=-1)
-
-        # state: ground truth, obs: add noise
-        if self.use_obs_noise:
-            obs *= torch.randn(obs.shape, device=self.device) * self.obs_noise_scale + 1 # add a gaussian noise of mean 0 and variance self.obs_noise_scale**2
-    
         # add action history to actor
         if self.action_history > 0:
             self.action_history_buffer.append(self.prev_actions)
             all_action_history = torch.concat(list(self.action_history_buffer), dim=-1)
             obs = torch.cat([obs, all_action_history], dim=-1)
+
+        # state: obs + t + throttle
+        t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
+        state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
+        if self.use_throttle2critic:
+            # add throttle to critic, throttle is the ground truth, w.o. action noise
+            state = torch.concat([state, self.root_state[:, 0, 28:]], dim=-1)
+
+        # state: ground truth, obs: add noise to obs (without action history)
+        if self.use_obs_noise:
+            if self.action_history > 0:
+                obs_noise_dim = obs.shape[-1] - self.action_history * 4
+                obs[..., :obs_noise_dim] *= torch.randn(self.num_envs, 1, obs_noise_dim, device=self.device) * self.obs_noise_scale + 1 # add a gaussian noise of mean 0 and variance self.obs_noise_scale**2
+            else:
+                obs *= torch.randn(obs.shape, device=self.device) * self.obs_noise_scale + 1 # add a gaussian noise of mean 0 and variance self.obs_noise_scale**2
 
         if self.use_eval:
             self.sim_data.append(obs[0].clone())
