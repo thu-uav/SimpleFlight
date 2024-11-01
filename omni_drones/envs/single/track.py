@@ -273,14 +273,13 @@ class Track(IsaacEnv):
         # action history
         self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
         self.action_history_buffer = collections.deque(maxlen=self.action_history)
-
-        state_dim = obs_dim + 4
-        
-        if self.use_throttle2critic:
-            state_dim += 4
         
         if self.action_history > 0:
             obs_dim += self.action_history * 4
+        
+        state_dim = obs_dim + 4
+        if self.use_throttle2critic:
+            state_dim += 4
         
         self.observation_spec = CompositeSpec({
             "agents": {
