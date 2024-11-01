@@ -151,13 +151,9 @@ class Track(IsaacEnv):
             self.wind_w = torch.zeros(self.num_envs, 3, 8, device=self.device)
             self.wind_i = torch.zeros(self.num_envs, 1, device=self.device)
         
-        # self.init_rpy_dist = D.Uniform(
-        #     torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
-        #     torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
-        # )
         self.init_rpy_dist = D.Uniform(
-            torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi,
-            torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi
+            torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
+            torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
         )
         self.traj_rpy_dist = D.Uniform(
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
