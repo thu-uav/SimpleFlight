@@ -82,7 +82,6 @@ class Hover(IsaacEnv):
         self.time_encoding = cfg.task.time_encoding
         self.use_eval = cfg.task.use_eval
         self.use_disturbance = cfg.task.use_disturbance
-        self.sim_data = []
         
         self.randomization = cfg.task.get("randomization", {})
         self.has_payload = "payload" in self.randomization.keys()
@@ -442,8 +441,6 @@ class Hover(IsaacEnv):
         self.last_angular_jerk = self.angular_jerk.clone()
         
         obs = torch.cat(obs, dim=-1)
-        
-        # self.sim_data.append(obs[0])
 
         # add throttle to critic
         if self.use_rotor2critic:
@@ -511,9 +508,6 @@ class Hover(IsaacEnv):
             (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
             # | done_misbehave
         )
-        
-        if done[0]:
-            torch.save(self.sim_data, 'sim.pt')
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats['action_error_order1_mean'].div_(
