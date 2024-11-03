@@ -5,7 +5,7 @@ import torch
 # data = [(rpos, linear_velocity, rotation_matrix)]
 future_traj_steps = 4
 rpos_len = future_traj_steps * 3
-data = torch.load('/home/jiayu/OmniDrones/real2sim/slow/sim_state.pt')
+data = torch.load('/home/jiayu/OmniDrones/real2sim/slow_ab/data_11_3/obs_norm/sim_state.pt')
 data = torch.stack(data)
 # sim
 rpos = data[:-1, 0, :rpos_len].to('cpu').numpy()
@@ -15,13 +15,20 @@ lateral = data[:-1, 0, rpos_len + 6:rpos_len + 9].to('cpu').numpy()
 up = data[:-1, 0, rpos_len + 9:rpos_len + 12].to('cpu').numpy()
 
 # real
-real_data = torch.load('/home/jiayu/OmniDrones/real2sim/slow/real_state.pt')
+trajectory_scale = 'slow'
+if trajectory_scale == 'slow':
+    vel_range = 0.5
+elif trajectory_scale == 'normal':
+    vel_range = 2.0
+else:
+    vel_range = 3.0
+real_data = torch.load('/home/jiayu/OmniDrones/real2sim/slow_ab/data_11_3/obs_norm/real_state.pt')
 real_obs = []
 for frame in real_data:
     real_obs.append(frame['agents', 'observation'][0,0])
 real_obs = torch.stack(real_obs)
 real_rpos = real_obs[..., :rpos_len].to('cpu').numpy()
-real_linear_vel = np.clip(real_obs[..., rpos_len:rpos_len + 3].to('cpu').numpy(), -0.5, 0.5)
+real_linear_vel = np.clip(real_obs[..., rpos_len:rpos_len + 3].to('cpu').numpy(), -0.5 / vel_range, 0.5 / vel_range)
 real_heading = real_obs[..., rpos_len + 3:rpos_len + 6].to('cpu').numpy()
 real_lateral = real_obs[..., rpos_len + 6:rpos_len + 9].to('cpu').numpy()
 real_up = real_obs[..., rpos_len + 9:rpos_len + 12].to('cpu').numpy()

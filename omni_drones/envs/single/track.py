@@ -260,7 +260,7 @@ class Track(IsaacEnv):
             obs_dim += sum(spec.shape[-1] for name, spec in self.drone.info_spec.items())
         
         if self.use_obs_norm:
-            rpos_range = [0.2, 0.2, 0.2] * self.future_traj_steps
+            rpos_range = [5.0, 5.0, 5.0] * self.future_traj_steps
             if self.trajectory_scale == 'slow':
                 vel_range = [0.5, 0.5, 0.5]
             elif self.trajectory_scale == 'normal':
@@ -513,7 +513,7 @@ class Track(IsaacEnv):
         if self.use_obs_norm:
             obs = obs / self.obs_norm_range.unsqueeze(0).unsqueeze(0).repeat(self.num_envs, 1, 1)
 
-        self.stats["obs_range"] = torch.max(torch.abs(obs), dim=-1).values
+        self.stats["obs_range"].set_(torch.max(torch.abs(obs), dim=-1).values)
 
         # add action history to actor
         if self.action_history > 0:

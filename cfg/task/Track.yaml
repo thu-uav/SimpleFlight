@@ -6,7 +6,7 @@ defaults:
   - /base/sim_base@_here_
 
 env:
-  num_envs: 4096
+  num_envs: 8192
   max_episode_length: 1500
 
 drone_model: Crazyflie
@@ -28,7 +28,7 @@ obs_noise_scale: 0.1 # var = 0.1 ** 2
 use_action_history: false
 action_history_step: 1
 # use obs normalization
-use_obs_norm: 0
+use_obs_norm: 1
 # add pos to obs
 use_ab_wolrd_pos: false
 # random init pos
@@ -52,7 +52,7 @@ reward_jerk_max: 0.0
 # action smoothness
 reward_action_smoothness_weight_init: 0.2
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 0.2
+reward_smoothness_max: 10.2
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
