@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 import torch
 import pandas as pd
 
-plot_sim = False
+plot_sim = True
 
 start_T = 0
 # sim data
-sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/slow_ab/data_11_3/obs_norm/sim_action.pt')
-sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/slow_ab/data_11_3/obs_norm/sim_rpy.pt')
+sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/fast/baseline/sim_action.pt')
+sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/fast/baseline/sim_rpy.pt')
 sim_target_rpy = torch.stack(sim_target)[:, 0, :3].to('cpu').numpy()[start_T:] * np.pi
 sim_target_thrust = torch.stack(sim_target)[:, 0, 3].to('cpu')[start_T:]
 sim_target_thrust = torch.clamp((sim_target_thrust + 1) / 2, min = 0.0, max = 0.9).numpy() * 2**16
@@ -18,7 +18,7 @@ time_steps = np.arange(len(sim_real_rpy))
 # real data: load from rosbag        
 start_T_real = 500
 end_T_real = 500 + 1500
-df = pd.read_csv('/home/jiayu/OmniDrones/real2sim/slow_ab/data_11_3/obs_norm/cf14_slow_obs_norm.csv', skip_blank_lines=True)
+df = pd.read_csv('/home/jiayu/OmniDrones/real2sim/PID/cf14_figure8.csv', skip_blank_lines=True)
 preprocess_df = df[(df[['target_rate.thrust']].to_numpy()[:,0] > 0)][start_T_real:end_T_real]
 real_target = preprocess_df[['target_rate.r', 'target_rate.p', 'target_rate.y']].to_numpy() * np.pi / 180
 real_real_rpy = preprocess_df[['real_rate.r', 'real_rate.p', 'real_rate.y']].to_numpy()
