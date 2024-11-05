@@ -31,6 +31,12 @@ from pxr import UsdGeom, Usd, UsdPhysics, Gf
 import torch
 import omni_drones.utils.kit as kit_utils
 
+from .chained_polynomial import ChainedPolynomial
+from .pointed_star import NPointedStar
+from .polynomial import Polynomial
+from .zigzag import RandomZigzag
+# import math_utils as mu
+
 def create_obstacle(
     prim_path: str,
     prim_type: str = "Xform",

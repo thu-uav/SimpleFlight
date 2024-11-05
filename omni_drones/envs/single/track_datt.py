@@ -14,7 +14,8 @@ from torchrl.data import UnboundedContinuousTensorSpec, CompositeSpec
 from omni.isaac.debug_draw import _debug_draw
 
 from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
-from ..utils.datt_traj import RandomZigzag
+from ..utils.chained_polynomial import ChainedPolynomial
+from ..utils.zigzag import RandomZigzag
 import collections
 import numpy as np
 
@@ -96,6 +97,7 @@ class Track_datt(IsaacEnv):
         self.reward_up_weight = cfg.task.reward_up_weight
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
         self.use_fixed_ref = cfg.task.use_fixed_ref
+        self.use_smooth_traj = cfg.task.use_smooth_traj
         self.target_rpy = []
         self.real_rpy = []
 
@@ -125,13 +127,10 @@ class Track_datt(IsaacEnv):
         #     torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
         #     torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
         # )
+        
         self.init_rpy_dist = D.Uniform(
             torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi,
             torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi
-        )
-        self.traj_rpy_dist = D.Uniform(
-            torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
-            torch.tensor([0., 0., 0.], device=self.device) * torch.pi
         )
 
         # eval
@@ -140,17 +139,28 @@ class Track_datt(IsaacEnv):
                 torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
                 torch.tensor([0., 0., 0.], device=self.device) * torch.pi
             )
-            self.traj_rpy_dist = D.Uniform(
-                torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
-                torch.tensor([0., 0., 0.], device=self.device) * torch.pi
-            )
-        self.ref = RandomZigzag(max_D=np.array([1.0, 1.0, 0.0]), num_envs=self.num_envs, device=self.device)
-        if self.use_fixed_ref:
-            self.ref.x[:] = self.ref.x[0].unsqueeze(0).repeat(self.num_envs, 1, 1)
-        
+            
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
+        if self.use_smooth_traj:
+            self.ref = ChainedPolynomial(num_trajs=self.num_envs,
+                                    scale=1.0,
+                                    use_y=True,
+                                    min_dt=1.5,
+                                    max_dt=4.0,
+                                    degree=5,
+                                    origin=self.origin,
+                                    device=self.device)
+        else:
+            self.ref = RandomZigzag(num_trajs=self.num_envs,
+                                    max_D=[1.0, 1.0, 0.0],
+                                    min_dt=1.0,
+                                    max_dt=3.0,
+                                    diff_axis=True,
+                                    origin=self.origin,
+                                    device=self.device)
+        # if self.use_fixed_ref:
+        #     self.ref.x[:] = self.ref.x[0].unsqueeze(0).repeat(self.num_envs, 1, 1)
 
-        self.traj_rot = torch.zeros(self.num_envs, 4, device=self.device)
         self.traj_t0 = torch.zeros(self.num_envs, 1, device=self.device)
 
         self.last_linear_v = torch.zeros(self.num_envs, 1, device=self.device)
@@ -280,10 +290,9 @@ class Track_datt(IsaacEnv):
         
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
-        self.traj_rot[env_ids] = euler_to_quaternion(self.traj_rpy_dist.sample(env_ids.shape))
         # reset traj with done flag
-        if not self.use_fixed_ref:
-            self.ref.reset(env_ids)
+        # if not self.use_fixed_ref:
+        self.ref.reset(env_ids)
 
         pos = torch.zeros(len(env_ids), 3, device=self.device)
         pos = pos + self.origin # init: (0, 0, 1)
@@ -558,12 +567,15 @@ class Track_datt(IsaacEnv):
         if env_ids is None:
             env_ids = ...
         # discrete t
-        t = self.progress_buf[env_ids].unsqueeze(1) + step_size * torch.arange(steps, device=self.device)
+        t = self.progress_buf.unsqueeze(1) + step_size * torch.arange(steps, device=self.device)
         # t: [env_ids, steps], continuous t
-        t = self.traj_t0[env_ids] + t * self.dt
+        t = self.traj_t0 + t * self.dt
         # target_pos: [num_envs, steps, 3]
-        # target_pos, _ = vmap(lemniscate_v)(t, self.T_scale[env_ids].unsqueeze(-1))
-        target_pos = self.ref.pos(t, env_ids=env_ids)
+        
+        target_pos = []
+        for ti in range(t.shape[1]):
+            target_pos.append(self.ref.pos(t[:, ti]))
+        target_pos = torch.stack(target_pos, dim=1)[env_ids]
 
-        return self.origin + target_pos
+        return target_pos
 

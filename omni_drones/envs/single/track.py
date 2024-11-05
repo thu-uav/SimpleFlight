@@ -37,7 +37,6 @@ from torchrl.data import UnboundedContinuousTensorSpec, CompositeSpec
 from omni.isaac.debug_draw import _debug_draw
 
 from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
-from ..utils.datt_traj import RandomZigzag
 import collections
 import numpy as np
 from omni_drones.utils.torch import quaternion_to_euler
