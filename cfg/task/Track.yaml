@@ -59,7 +59,7 @@ reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
 reward_norm_max: 0.0
 # distance
 reward_distance_scale: 5.0
-trajectory_scale: 'slow' # 'slow', 'normal', 'fast'
+trajectory_scale: 'fast' # 'slow', 'normal', 'fast'
 
 action_transform: PIDrate
 # history: true

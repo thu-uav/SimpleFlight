@@ -98,8 +98,9 @@ class Track_datt(IsaacEnv):
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
         self.use_fixed_ref = cfg.task.use_fixed_ref
         self.use_smooth_traj = cfg.task.use_smooth_traj
-        self.target_rpy = []
-        self.real_rpy = []
+        self.sim_data = []
+        self.sim_rpy = []
+        self.action_data = []
 
         super().__init__(cfg, headless)
 
@@ -123,14 +124,9 @@ class Track_datt(IsaacEnv):
             self.wind_w = torch.zeros(self.num_envs, 3, 8, device=self.device)
             self.wind_i = torch.zeros(self.num_envs, 1, device=self.device)
         
-        # self.init_rpy_dist = D.Uniform(
-        #     torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
-        #     torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
-        # )
-        
         self.init_rpy_dist = D.Uniform(
-            torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi,
-            torch.tensor([0.0, 0.0, 0.], device=self.device) * torch.pi
+            torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
+            torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
         )
 
         # eval
@@ -450,6 +446,9 @@ class Track_datt(IsaacEnv):
             all_action_history = torch.concat(list(self.action_history_buffer), dim=-1)
             obs = torch.cat([obs, all_action_history], dim=-1)
 
+        if self.use_eval:
+            self.sim_data.append(obs[0].clone())
+
         return TensorDict({
             "agents": {
                 "observation": obs,
@@ -512,6 +511,14 @@ class Track_datt(IsaacEnv):
             | (self.drone.pos[..., 2] < 0.1)
             # | (distance > self.reset_thres)
         )
+
+        if self.use_eval:
+            self.sim_rpy.append(self.drone.vel_b[0, :, 3:].clone())
+            self.action_data.append(self.policy_actions[0].clone())
+            if done[0]:
+                torch.save(self.sim_data, 'sim_state.pt')
+                torch.save(self.sim_rpy, 'sim_rpy.pt')
+                torch.save(self.action_data, 'sim_action.pt')
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats["tracking_error"].div_(

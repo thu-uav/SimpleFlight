@@ -7,8 +7,8 @@ plot_sim = True
 
 start_T = 0
 # sim data
-sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/slow_ab/data_11_3/smooth0_2_init_prev_action0/sim_action.pt')
-sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/slow_ab/data_11_3/smooth0_2_init_prev_action0/sim_rpy.pt')
+sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/smooth0_5_rpy0/normal/sim_action.pt')
+sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/smooth0_5_rpy0/normal/sim_rpy.pt')
 sim_target_rpy = torch.stack(sim_target)[:, 0, :3].to('cpu').numpy()[start_T:] * np.pi
 sim_target_thrust = torch.stack(sim_target)[:, 0, 3].to('cpu')[start_T:]
 sim_target_thrust = torch.clamp((sim_target_thrust + 1) / 2, min = 0.0, max = 0.9).numpy() * 2**16

@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 
-from .single import Rotate, Hover, Exchange, MultiGoto, Goto, Goto_static, Goto_return, Infeasible, Track, Track_datt, ZigZag, Star, TrackV1, Turn, Takeoff, Line
+from .single import Rotate, Hover, Exchange, MultiGoto, Goto, Goto_static, Goto_return, Infeasible, Track, Track_datt, TrackV1, Turn, Takeoff, Line
 from .platform import PlatformHover, PlatformFlyThrough
 from .inv_pendulum import InvPendulumHover, InvPendulumFlyThrough
 from .transport import TransportHover, TransportFlyThrough, TransportTrack
