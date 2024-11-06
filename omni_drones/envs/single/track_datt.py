@@ -16,6 +16,7 @@ from omni.isaac.debug_draw import _debug_draw
 from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
 from ..utils.chained_polynomial import ChainedPolynomial
 from ..utils.zigzag import RandomZigzag
+from ..utils.pointed_star import NPointedStar
 import collections
 import numpy as np
 
@@ -96,7 +97,6 @@ class Track_datt(IsaacEnv):
         self.reward_spin_weight = cfg.task.reward_spin_weight
         self.reward_up_weight = cfg.task.reward_up_weight
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
-        self.use_fixed_ref = cfg.task.use_fixed_ref
         self.use_smooth_traj = cfg.task.use_smooth_traj
         self.sim_data = []
         self.sim_rpy = []
@@ -128,13 +128,6 @@ class Track_datt(IsaacEnv):
             torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
             torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
         )
-
-        # eval
-        if self.use_eval:
-            self.init_rpy_dist = D.Uniform(
-                torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
-                torch.tensor([0., 0., 0.], device=self.device) * torch.pi
-            )
             
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
         if self.use_smooth_traj:
@@ -154,8 +147,20 @@ class Track_datt(IsaacEnv):
                                     diff_axis=True,
                                     origin=self.origin,
                                     device=self.device)
-        # if self.use_fixed_ref:
-        #     self.ref.x[:] = self.ref.x[0].unsqueeze(0).repeat(self.num_envs, 1, 1)
+
+        # eval
+        if self.use_eval:
+            self.init_rpy_dist = D.Uniform(
+                torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
+                torch.tensor([0., 0., 0.], device=self.device) * torch.pi
+            )
+            if self.cfg.task.eval_star:
+                self.ref = NPointedStar(num_trajs=self.num_envs,
+                                num_points=5,
+                                origin=self.origin,
+                                speed=1.0,
+                                radius=0.7,
+                                device=self.device)
 
         self.traj_t0 = torch.zeros(self.num_envs, 1, device=self.device)
 
@@ -287,7 +292,6 @@ class Track_datt(IsaacEnv):
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
         # reset traj with done flag
-        # if not self.use_fixed_ref:
         self.ref.reset(env_ids)
 
         pos = torch.zeros(len(env_ids), 3, device=self.device)

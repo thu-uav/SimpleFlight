@@ -27,7 +27,6 @@ class NPointedStar(BaseTrajectory):
             self.speed = torch.rand(num_trajs, dtype=torch.float32, device=self.device) * (self._speed[1] - self._speed[0]) + self._speed[0]
         else:
             self.speed = torch.ones(num_trajs, dtype=torch.float32, device=self.device) * self._speed
-        print(self.speed)
         if isinstance(radius, (ListConfig, list)):
             self.radius = torch.rand(num_trajs, dtype=torch.float32, device=self.device) * (self._radius[1] - self._radius[0]) + self._radius[0]
         else:
@@ -143,22 +142,26 @@ if __name__ == '__main__':
     
     datetime = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime(time.time()))
     
-    t = torch.arange(0, 40, 0.1, dtype=torch.float32)
-    ref = NPointedStar(t.shape[0], 5, speed=1.0, radius=1.0)
+    t = torch.arange(0, 10, 0.01, dtype=torch.float32)
+    ref = NPointedStar(t.shape[0], 5, speed=1.0, radius=0.7)
     
     pos = ref.pos(t).cpu().numpy()
     vel = ref.vel(t).cpu().numpy()
 
-    print(pos.shape)
     idx = 0
     # plot 3D traj and save
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(pos[ :, 0], pos[:, 1], pos[:, 2])
+    fig = plt.figure(figsize=(5, 5))
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.plot(pos[ :, 0], pos[:, 1], pos[:, 2])
+    # ax.set_xlabel('x')
+    # ax.set_ylabel('y')
+    # ax.set_zlabel('z')
+    # plt.savefig(f'star-{datetime}.png')
+    ax = fig.add_subplot(111)
+    ax.plot(pos[ :, 0], pos[:, 1])
     ax.set_xlabel('x')
     ax.set_ylabel('y')
-    ax.set_zlabel('z')
-    plt.savefig(f'figs/star-{datetime}.png')
+    plt.savefig(f'star-{datetime}.png')
 
     # plot x/y/z and vx/vy/vz in 3 * 2 subplots
     fig, axs = plt.subplots(3, 2, figsize=(10, 10))
@@ -182,5 +185,5 @@ if __name__ == '__main__':
     axs[2,1].set_ylabel('vz')
     
     plt.tight_layout()
-    plt.savefig(f'figs/star_xyz-{datetime}.png')
+    plt.savefig(f'star_xyz-{datetime}.png')
     
