@@ -152,7 +152,7 @@ class RandomZigzag(BaseTrajectory):
 if __name__ == "__main__":
     num_traj = 600
     # vel = -2.0 ~ 2.0
-    ref = RandomZigzag(num_traj, max_D=[1., 1., 0.0], min_dt=1.0, max_dt=3.0, diff_axis=True)
+    ref = RandomZigzag(num_traj, max_D=[1., 1., 0.0], min_dt=1.5, max_dt=3.0, diff_axis=True)
 
     t = torch.stack([torch.arange(0, 10, 0.02) for _ in range(num_traj)], dim=0)
 
@@ -164,6 +164,7 @@ if __name__ == "__main__":
 
     pos = torch.stack(pos, dim=1).cpu().numpy()
     vel = torch.stack(vel, dim=1).cpu().numpy()
+    import numpy as np
 
     plot_idx = 0
     import matplotlib.pyplot as plt

@@ -7,7 +7,7 @@ defaults:
 
 env:
   num_envs: 100
-  max_episode_length: 1500
+  max_episode_length: 3500
 
 drone_model: Crazyflie
 force_sensor: false
@@ -50,9 +50,9 @@ reward_jerk_weight_init: 0.0
 reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
 reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 0.0
+reward_action_smoothness_weight_init: 10.0
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 0.0
+reward_smoothness_max: 10.0
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
