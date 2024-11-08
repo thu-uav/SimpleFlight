@@ -151,9 +151,8 @@ class RandomZigzag(BaseTrajectory):
 
 if __name__ == "__main__":
     num_traj = 5000
-    # dt: 1.0~3.0 -> v_max = 1.82
-    # dt: 0.6~1.5 -> v_max = 
-    ref = RandomZigzag(num_traj, max_D=[1., 1., 0.0], min_dt=1.0, max_dt=1.5, diff_axis=True)
+    # dt: 1.0~1.5 -> v_max = 1.98
+    ref = RandomZigzag(num_traj, max_D=[1., 1., 0.0], min_dt=1.0, max_dt=3.0, diff_axis=True)
 
     t = torch.stack([torch.arange(0, 10, 0.02) for _ in range(num_traj)], dim=0)
 
