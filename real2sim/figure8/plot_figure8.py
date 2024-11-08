@@ -14,7 +14,6 @@ def straight_line_v(t, v):
     total_time = total_distance / v
     
     # 线性插值生成轨迹
-    breakpoint()
     x = start_point + (end_point - start_point) * (t / total_time)
     x = torch.cat([x, torch.zeros_like(t)[:, None]], dim=-1)  # 添加 z 坐标为 0
     
@@ -39,12 +38,12 @@ def lemniscate_v(t, T):
     return x, v
 
 # 参数设置
-T = 15.0  # 周期
+T = 5.5  # 周期
 t = np.linspace(0, T, 1000)  # 时间从 0 到 T，分成 1000 个点
 
 # 计算 x 和 v
-# x, v = lemniscate_v(t, T)
-x, v = straight_line_v(t, 1.0)
+x, v = lemniscate_v(t, T)
+# x, v = straight_line_v(t, 1.0)
 
 # 提取 x 和 y 坐标
 x_coords = x[:, 0]

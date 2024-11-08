@@ -217,7 +217,7 @@ class ChainedPolynomial(BaseTrajectory):
 
 if __name__ == "__main__":
     num_traj = 600
-    ref = ChainedPolynomial(num_traj, scale=2.5, min_dt=1.5, max_dt=4.0, degree=5)
+    ref = ChainedPolynomial(num_traj, scale=1.5, min_dt=1.5, max_dt=4.0, degree=5)
 
     t = torch.stack([torch.arange(0, 10, 0.02) for _ in range(num_traj)], dim=0)
 
@@ -238,6 +238,7 @@ if __name__ == "__main__":
     acc = torch.stack(acc, dim=1).cpu().numpy()
     jerk = torch.stack(jerk, dim=1).cpu().numpy()
     snap = torch.stack(snap, dim=1).cpu().numpy()
+    import numpy as np
 
     plot_idx = 5
     import matplotlib.pyplot as plt

@@ -24,7 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: datt_zigzag_lower_smooth2
+  run_name: datt_smooth_traj_scale1_smooth1
   # run_name: fast_smooth10_init_slowest
   job_type: train
   entity: chenjy
