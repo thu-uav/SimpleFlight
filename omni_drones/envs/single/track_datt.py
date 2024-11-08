@@ -142,8 +142,8 @@ class Track_datt(IsaacEnv):
         else:
             self.ref = RandomZigzag(num_trajs=self.num_envs,
                                     max_D=[1.0, 1.0, 0.0],
-                                    min_dt=1.5,
-                                    max_dt=3.0,
+                                    min_dt=1.0,
+                                    max_dt=1.5,
                                     diff_axis=True,
                                     origin=self.origin,
                                     device=self.device)
