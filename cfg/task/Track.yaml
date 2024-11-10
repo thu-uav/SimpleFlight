@@ -6,7 +6,7 @@ defaults:
   - /base/sim_base@_here_
 
 env:
-  num_envs: 100
+  num_envs: 8192
   max_episode_length: 1500
 
 drone_model: Crazyflie
@@ -21,7 +21,7 @@ random_latency: false
 reset_thres: 1.
 future_traj_steps: 4
 
-use_eval: 1
+use_eval: 0
 use_throttle2critic: 0 # need to set critic_input = 'state'
 use_obs_noise: 0
 obs_noise_scale: 0.1 # var = 0.1 ** 2
@@ -50,9 +50,9 @@ reward_jerk_weight_init: 0.0
 reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
 reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 10.0
+reward_action_smoothness_weight_init: 5.0
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 10.0
+reward_smoothness_max: 5.0
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005

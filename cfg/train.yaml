@@ -5,8 +5,8 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-model_dir: /home/jiayu/OmniDrones/real2sim/DATT/zigzag_smooth5_br_0_5pi/datt_zigzag_traj_smooth5_br_0_5pi.pt
-# model_dir: null
+# model_dir: /home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/datt_smooth_traj_scale2_5_smooth5.pt
+model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
 max_iters: -1
@@ -24,8 +24,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  # run_name: datt_smooth_traj_scale2_smooth2
-  run_name: datt_zigzag_traj_smooth5_br_0_5pi_evalstar
+  # run_name: datt_smooth_traj_smooth5_latency2
+  run_name: datt_smooth_traj_smooth5
   job_type: train
   entity: chenjy
   project: simpleflight
