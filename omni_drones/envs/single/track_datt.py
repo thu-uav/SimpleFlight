@@ -132,7 +132,7 @@ class Track_datt(IsaacEnv):
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
         if self.use_smooth_traj:
             self.ref = ChainedPolynomial(num_trajs=self.num_envs,
-                                    scale=1.0,
+                                    scale=1.5,
                                     use_y=True,
                                     min_dt=1.5,
                                     max_dt=4.0,
