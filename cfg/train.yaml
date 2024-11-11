@@ -25,7 +25,7 @@ viewer:
 wandb:
   group: ${oc.select:..task.name}
   run_name: datt_smooth_traj_smooth5_200Hz
-  # run_name: datt_100Hz_eval200Hz_fast
+  # run_name: debug
   job_type: train
   entity: chenjy
   project: simpleflight

@@ -525,6 +525,7 @@ class PIDRateController(nn.Module):
         
         self.target_clip = uav_params['target_clip']
         self.max_thrust_ratio = uav_params['max_thrust_ratio']
+        self.min_thrust_ratio = uav_params['min_thrust_ratio']
         self.fixed_yaw = uav_params['fixed_yaw']
                 
         self.init_flag = True # init last_body_rate and inte
