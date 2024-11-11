@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 import torch
 import pandas as pd
 
-plot_sim = False
+plot_sim = True
 
 start_T = 0
 # sim data
-sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/fast_200Hz/sim_action.pt')
-sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/fast_200Hz/sim_rpy.pt')
+sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/fast/sim_action.pt')
+sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/fast/sim_rpy.pt')
 sim_target_rpy = torch.stack(sim_target)[:, 0, :3].to('cpu').numpy()[start_T:] * np.pi
 sim_target_thrust = torch.stack(sim_target)[:, 0, 3].to('cpu')[start_T:]
 # thrust: 0.5828 # init for hover

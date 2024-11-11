@@ -413,6 +413,7 @@ class PIDRateController(Transform):
         self.max_thrust = self.controller.max_thrusts.sum(-1)
         self.target_clip = self.controller.target_clip
         self.max_thrust_ratio = self.controller.max_thrust_ratio
+        self.min_thrust_ratio = self.controller.min_thrust_ratio
         self.fixed_yaw = self.controller.fixed_yaw
         # self.tanh = TanhTransform()
     
@@ -430,8 +431,8 @@ class PIDRateController(Transform):
         # action: [-1, 1]
         tensordict.set(("info", "policy_action"), action)
         target_rate, target_thrust = action.split([3, 1], -1)
-        # target_rate: [-1, 1], target_thrust: [0, max_thrust_ratio]
-        target_thrust = torch.clamp((target_thrust + 1) / 2, min = 0.0, max = self.max_thrust_ratio)
+        # target_rate: [-1, 1], target_thrust: [min_thrust_ratio, max_thrust_ratio]
+        target_thrust = torch.clamp((target_thrust + 1) / 2, min = self.min_thrust_ratio, max = self.max_thrust_ratio)
         if self.fixed_yaw:
             target_rate[..., 2] = 0.0
 
