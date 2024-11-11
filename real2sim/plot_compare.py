@@ -5,7 +5,7 @@ import torch
 # data = [(rpos, linear_velocity, rotation_matrix)]
 future_traj_steps = 4
 rpos_len = future_traj_steps * 3
-data = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/sim_state.pt')
+data = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/fast_200Hz/sim_state.pt')
 data = torch.stack(data)
 # sim
 rpos = data[:-1, 0, :rpos_len].to('cpu').numpy()
@@ -23,7 +23,7 @@ elif trajectory_scale == 'normal':
     vel_range = 2.0
 else:
     vel_range = 3.0
-real_data = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/real_state.pt')
+real_data = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/fast_200Hz/real_state.pt')
 real_obs = []
 for frame in real_data:
     real_obs.append(frame['agents', 'observation'][0,0])
@@ -39,7 +39,7 @@ real_up = real_obs[..., rpos_len + 9:rpos_len + 12].to('cpu').numpy()
 
 time_steps = np.arange(len(rpos))
 real_time_steps = np.arange(len(real_rpos))
-show_len = 180
+show_len = 700
 
 fig, axs = plt.subplots(15, 1, figsize=(8, 15))
 

@@ -435,18 +435,16 @@ class PIDRateController(Transform):
         if self.fixed_yaw:
             target_rate[..., 2] = 0.0
 
+        # target_rate[:] = 0.0
+        # target_thrust[:] = 0.5828 # init for hover
+
         # raw action error
         ctbr_action = torch.concat([target_rate, target_thrust], dim=-1)
         prev_ctbr_action = tensordict[("info", "prev_action")]
-        # prev_prev_ctbr_action = tensordict[("info", "prev_prev_action")]
 
         action_error = torch.norm(ctbr_action - prev_ctbr_action, dim = -1)
         tensordict.set(("stats", "action_error_order1"), action_error)
-        # action_error_2 = torch.norm(prev_prev_ctbr_action + ctbr_action - 2 * prev_ctbr_action, dim = -1)
-        # tensordict.set(("stats", "action_error_order2"), action_error_2)
-        # update prev_action = current ctbr_action
         tensordict.set(("info", "prev_action"), ctbr_action)
-        # update prev_prev_action =  prev_ctbr_action
         tensordict.set(("info", "prev_prev_action"), prev_ctbr_action)
         
         # scale
@@ -459,6 +457,8 @@ class PIDRateController(Transform):
             target_thrust=target_thrust,
             reset_pid=tensordict['done'].expand(-1, drone_state.shape[1]) # num_drones: drone_state.shape[1]
         )
+        # cmds[:] = 0.2656405 # init for hover
+
         torch.nan_to_num_(cmds, 0.)
         tensordict.set(self.action_key, cmds)
         tensordict.set('ctbr', ctbr)

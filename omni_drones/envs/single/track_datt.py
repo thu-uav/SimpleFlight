@@ -154,6 +154,14 @@ class Track_datt(IsaacEnv):
                 torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
                 torch.tensor([0., 0., 0.], device=self.device) * torch.pi
             )
+            self.ref = ChainedPolynomial(num_trajs=self.num_envs,
+                                    scale=2.5,
+                                    use_y=True,
+                                    min_dt=1.5,
+                                    max_dt=4.0,
+                                    degree=5,
+                                    origin=self.origin,
+                                    device=self.device)
             if self.cfg.task.eval_star:
                 self.ref = NPointedStar(num_trajs=self.num_envs,
                                 num_points=5,
@@ -337,7 +345,7 @@ class Track_datt(IsaacEnv):
             self.wind_i[env_ids] = torch.rand(*env_ids.shape, 1, device=self.device) * (self.wind_intensity_high-self.wind_intensity_low) + self.wind_intensity_low
             self.wind_w[env_ids] = torch.randn(*env_ids.shape, 3, 8, device=self.device)
 
-    def _pre_sim_step(self, tensordict: TensorDictBase):
+    def _pre_sim_step(self, tensordict: TensorDictBase):        
         actions = tensordict[("agents", "action")]
         self.info["prev_action"] = tensordict[("info", "prev_action")]
         self.info["policy_action"] = tensordict[("info", "policy_action")]
@@ -349,9 +357,6 @@ class Track_datt(IsaacEnv):
         self.action_error_order1 = tensordict[("stats", "action_error_order1")].clone()
         self.stats["action_error_order1_mean"].add_(self.action_error_order1.mean(dim=-1).unsqueeze(-1))
         self.stats["action_error_order1_max"].set_(torch.max(self.stats["action_error_order1_max"], self.action_error_order1.mean(dim=-1).unsqueeze(-1)))
-        # self.action_error_order2 = tensordict[("stats", "action_error_order2")].clone()
-        # self.stats["action_error_order2_mean"].add_(self.action_error_order2.mean(dim=-1).unsqueeze(-1))
-        # self.stats["action_error_order2_max"].set_(torch.max(self.stats["action_error_order2_max"], self.action_error_order2.mean(dim=-1).unsqueeze(-1)))
 
         self.effort = self.drone.apply_action(actions)
 
@@ -452,6 +457,7 @@ class Track_datt(IsaacEnv):
 
         if self.use_eval:
             self.sim_data.append(obs[0].clone())
+            self.sim_rpy.append(self.drone.vel_b[0, :, 3:].clone())
 
         return TensorDict({
             "agents": {
@@ -517,8 +523,7 @@ class Track_datt(IsaacEnv):
         )
 
         if self.use_eval:
-            self.sim_rpy.append(self.drone.vel_b[0, :, 3:].clone())
-            self.action_data.append(self.policy_actions[0].clone())
+            self.action_data.append(self.prev_actions[0].clone())
             if done[0]:
                 torch.save(self.sim_data, 'sim_state.pt')
                 torch.save(self.sim_rpy, 'sim_rpy.pt')

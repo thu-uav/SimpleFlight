@@ -538,6 +538,7 @@ class Track(IsaacEnv):
 
         if self.use_eval:
             self.sim_data.append(obs[0].clone())
+            self.sim_rpy.append(self.drone.vel_b[0, :, 3:].clone())
 
         return TensorDict({
             "agents": {
@@ -607,8 +608,7 @@ class Track(IsaacEnv):
         )
         
         if self.use_eval:
-            self.sim_rpy.append(self.drone.vel_b[0, :, 3:].clone())
-            self.action_data.append(self.policy_actions[0].clone())
+            self.action_data.append(self.prev_actions[0].clone())
             if done[0]:
                 torch.save(self.sim_data, 'sim_state.pt')
                 torch.save(self.sim_rpy, 'sim_rpy.pt')
