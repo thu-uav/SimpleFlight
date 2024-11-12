@@ -5,7 +5,7 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/jiayu/OmniDrones/real2sim/DATT/scale2_5_smooth5/datt_smooth_traj_scale2_5_smooth5.pt
+# model_dir: /home/jiayu/OmniDrones/real2sim/DATT/thrust0_5to0_9_100Hz/datt_smooth_100Hz_thrust_0_5to0_9.pt
 model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
@@ -24,7 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: datt_smooth_traj_smooth5_200Hz
+  run_name: fast_new_smoothness
   # run_name: debug
   job_type: train
   entity: chenjy
@@ -36,8 +36,8 @@ wandb:
   tags: 
 
 defaults:
-  # - task: Track
-  - task: Track_datt
+  - task: Track
+  # - task: Track_datt
   # - task: Hover
   - algo: mappo
   - _self_

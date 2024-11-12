@@ -226,7 +226,6 @@ class Track(IsaacEnv):
         self.draw = _debug_draw.acquire_debug_draw_interface()
         
         self.prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
-        # self.prev_prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
         self.count = 0 # episode of RL training
 
     def _design_scene(self):
@@ -355,14 +354,12 @@ class Track(IsaacEnv):
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
         self.traj_rot[env_ids] = euler_to_quaternion(self.traj_rpy_dist.sample(env_ids.shape))
-        # self.traj_scale[env_ids] = self.traj_scale_dist.sample(env_ids.shape)
         self.T_scale[env_ids] = self.T_scale_dist.sample(env_ids.shape)
         if self.use_random_init:
             self.traj_t0[env_ids] = torch.rand(env_ids.shape).to(self.device) * self.T_scale[env_ids] # 0 ~ T
         else:
             self.traj_t0[env_ids] = 0.25 * self.T_scale[env_ids]
             # self.traj_t0[env_ids] = 0.4 * self.T_scale[env_ids]
-            # self.traj_t0[env_ids] = 0.6 * self.T_scale[env_ids]
 
         t0 = torch.zeros(len(env_ids), device=self.device)
         pos, linear_v = lemniscate_v(t0 + self.traj_t0[env_ids], self.T_scale[env_ids])
@@ -386,10 +383,10 @@ class Track(IsaacEnv):
 
         self.stats[env_ids] = 0.
 
+        # init prev_actions: hover
         cmd_init = 2.0 * (self.drone.throttle[env_ids]) ** 2 - 1.0
-        max_thrust_ratio = self.drone.params['max_thrust_ratio']
-        self.info['prev_action'][env_ids, :, 3] = (0.5 * (max_thrust_ratio + cmd_init)).mean(dim=-1)
-        self.prev_actions[env_ids] = self.info['prev_action'][env_ids]
+        self.info['prev_action'][env_ids, :, 3] = cmd_init.mean(dim=-1)
+        self.prev_actions[env_ids] = self.info['prev_action'][env_ids].clone()
         
         # add init_action to self.action_history_buffer
         for _ in range(self.action_history):

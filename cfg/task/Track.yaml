@@ -7,7 +7,7 @@ defaults:
 
 env:
   num_envs: 8192
-  max_episode_length: 3000
+  max_episode_length: 1500
 
 drone_model: Crazyflie
 force_sensor: false

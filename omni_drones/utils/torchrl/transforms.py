@@ -414,7 +414,6 @@ class PIDRateController(Transform):
         self.target_clip = self.controller.target_clip
         self.max_thrust_ratio = self.controller.max_thrust_ratio
         self.min_thrust_ratio = self.controller.min_thrust_ratio
-        self.fixed_yaw = self.controller.fixed_yaw
         # self.tanh = TanhTransform()
     
     def transform_input_spec(self, input_spec: TensorSpec) -> TensorSpec:
@@ -431,13 +430,6 @@ class PIDRateController(Transform):
         # action: [-1, 1]
         tensordict.set(("info", "policy_action"), action)
         target_rate, target_thrust = action.split([3, 1], -1)
-        # target_rate: [-1, 1], target_thrust: [min_thrust_ratio, max_thrust_ratio]
-        target_thrust = torch.clamp((target_thrust + 1) / 2, min = self.min_thrust_ratio, max = self.max_thrust_ratio)
-        if self.fixed_yaw:
-            target_rate[..., 2] = 0.0
-
-        # target_rate[:] = 0.0
-        # target_thrust[:] = 0.5828 # init for hover
 
         # raw action error
         ctbr_action = torch.concat([target_rate, target_thrust], dim=-1)
@@ -445,8 +437,12 @@ class PIDRateController(Transform):
 
         action_error = torch.norm(ctbr_action - prev_ctbr_action, dim = -1)
         tensordict.set(("stats", "action_error_order1"), action_error)
-        tensordict.set(("info", "prev_action"), ctbr_action)
-        tensordict.set(("info", "prev_prev_action"), prev_ctbr_action)
+        tensordict.set(("info", "prev_action"), ctbr_action)       
+
+        # target_rate: [-1, 1], target_thrust: [min_thrust_ratio, max_thrust_ratio]
+        target_thrust = torch.clamp((target_thrust + 1) / 2, min = self.min_thrust_ratio, max = self.max_thrust_ratio)
+        # target_rate[:] = 0.0
+        # target_thrust[:] = 0.6328 # init for hover, (1.0 + cmds) / 2.0
         
         # scale
         target_rate = target_rate * 180.0 * self.target_clip
@@ -458,7 +454,7 @@ class PIDRateController(Transform):
             target_thrust=target_thrust,
             reset_pid=tensordict['done'].expand(-1, drone_state.shape[1]) # num_drones: drone_state.shape[1]
         )
-        # cmds[:] = 0.2656405 # init for hover
+        # cmds[:] = 0.2656405 # init for hover: 2 * hover_throttle^2 - 1
 
         torch.nan_to_num_(cmds, 0.)
         tensordict.set(self.action_key, cmds)
