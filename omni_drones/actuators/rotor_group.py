@@ -53,7 +53,7 @@ class RotorGroup(nn.Module):
         self.requires_grad_(False)
 
     def forward(self, cmds: torch.Tensor):
-        target_throttle = self.f_inv(torch.clamp((cmds + 1) / 2, 0, 1))
+        target_throttle = self.f_inv(torch.clamp((cmds + 1) / 2, 0., 1.))
 
         tau = torch.where(target_throttle > self.throttle, self.tau_up, self.tau_down)
         tau = torch.clamp(tau, 0, 1)

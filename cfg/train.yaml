@@ -5,7 +5,7 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/jiayu/OmniDrones/real2sim/DATT/thrust0_5to0_9_100Hz/datt_smooth_100Hz_thrust_0_5to0_9.pt
+# model_dir: /home/jiayu/OmniDrones/real2sim/fast/0_0to0_9/smooth5/fast_new_smoothness5.pt
 model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
@@ -24,7 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: fast_new_smoothness
+  run_name: fast_smoothness5_thrust0to0_9_eval
   # run_name: debug
   job_type: train
   entity: chenjy
