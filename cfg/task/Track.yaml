@@ -19,7 +19,7 @@ latency_step: 1
 random_latency: false
 
 reset_thres: 1.
-future_traj_steps: 4
+future_traj_steps: 10
 
 use_eval: 0
 use_throttle2critic: 0 # need to set critic_input = 'state'
