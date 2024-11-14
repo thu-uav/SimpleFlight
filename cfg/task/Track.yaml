@@ -29,6 +29,8 @@ use_action_history: false
 action_history_step: 5
 # use obs normalization
 use_obs_norm: 0
+# use large distance done
+use_infessible_done: 0
 # add pos to obs
 use_ab_wolrd_pos: false
 # random init pos

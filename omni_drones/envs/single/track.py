@@ -124,6 +124,7 @@ class Track(IsaacEnv):
         self.use_vel_init = cfg.task.use_vel_init
         self.use_obs_noise = cfg.task.use_obs_noise
         self.obs_noise_scale = cfg.task.obs_noise_scale
+        self.use_infessible_done = cfg.task.use_infessible_done
         self.sim_data = []
         self.sim_rpy = []
         self.action_data = []
@@ -258,15 +259,10 @@ class Track(IsaacEnv):
             obs_dim += sum(spec.shape[-1] for name, spec in self.drone.info_spec.items())
         
         if self.use_obs_norm:
-            rpos_range = [5.0, 5.0, 5.0] * self.future_traj_steps
-            if self.trajectory_scale == 'slow':
-                vel_range = [0.5, 0.5, 0.5]
-            elif self.trajectory_scale == 'normal':
-                vel_range = [2.0, 2.0, 2.0]
-            else:
-                vel_range = [3.0, 3.0, 3.0]
-            rotation_range = [1.0] * 9
-            self.obs_norm_range = torch.tensor(rpos_range + vel_range + rotation_range).to(self.device)
+            rpos_scale = [0.1, 0.1, 0.1] * self.future_traj_steps
+            vel_scale = [0.1, 0.1, 0.1]
+            rotation_scale = [1.0] * 9
+            self.obs_norm_scale = torch.tensor(rpos_scale + vel_scale + rotation_scale).to(self.device)
         
         # action history
         self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
@@ -508,7 +504,7 @@ class Track(IsaacEnv):
         obs = torch.cat(obs, dim=-1)
         
         if self.use_obs_norm:
-            obs = obs / self.obs_norm_range.unsqueeze(0).unsqueeze(0).repeat(self.num_envs, 1, 1)
+            obs = obs * self.obs_norm_scale.unsqueeze(0).unsqueeze(0).repeat(self.num_envs, 1, 1)
 
         self.stats["obs_range"].set_(torch.max(torch.abs(obs), dim=-1).values)
 
@@ -598,11 +594,17 @@ class Track(IsaacEnv):
         self.stats['reward_action_smoothness_scale'].set_(self.reward_action_smoothness_weight * torch.ones(self.num_envs, 1, device=self.device))
         self.stats['reward_action_norm_scale'].set_(self.reward_action_norm_weight * torch.ones(self.num_envs, 1, device=self.device))
 
-        done = (
-            (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
-            | (self.drone.pos[..., 2] < 0.1)
-            # | (distance > self.reset_thres)
-        )
+        if self.use_infessible_done:
+            done = (
+                (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
+                | (self.drone.pos[..., 2] < 0.1)
+                | (distance > self.reset_thres)
+            )
+        else:
+            done = (
+                (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
+                | (self.drone.pos[..., 2] < 0.1)
+            )
         
         if self.use_eval:
             self.action_data.append(self.prev_actions[0].clone())
