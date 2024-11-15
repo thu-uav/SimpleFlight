@@ -279,6 +279,7 @@ class Track_datt(IsaacEnv):
             "angular_a_mean": UnboundedContinuousTensorSpec(1),
             "linear_jerk_mean": UnboundedContinuousTensorSpec(1),
             "angular_jerk_mean": UnboundedContinuousTensorSpec(1),
+            "obs_range": UnboundedContinuousTensorSpec(1),
         }).expand(self.num_envs).to(self.device)
         info_spec = CompositeSpec({
             "drone_state": UnboundedContinuousTensorSpec((self.drone.n, 13), device=self.device),
@@ -446,8 +447,7 @@ class Track_datt(IsaacEnv):
         t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
         state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
         
-        # self.target_rpy.append(self.info['policy_action'].clone())
-        # self.real_rpy.append(self.drone.vel_b[..., 3:].clone())
+        self.stats["obs_range"].set_(torch.max(torch.abs(obs), dim=-1).values)
         
         # add action history to actor
         if self.action_history > 0:
@@ -516,10 +516,15 @@ class Track_datt(IsaacEnv):
         self.stats['reward_action_smoothness_scale'].set_(self.reward_action_smoothness_weight * torch.ones(self.num_envs, 1, device=self.device))
         self.stats['reward_action_norm_scale'].set_(self.reward_action_norm_weight * torch.ones(self.num_envs, 1, device=self.device))
 
+        # done = (
+        #     (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
+        #     | (self.drone.pos[..., 2] < 0.1)
+        #     # | (distance > self.reset_thres)
+        # )
         done = (
             (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
             | (self.drone.pos[..., 2] < 0.1)
-            # | (distance > self.reset_thres)
+            | (distance > self.reset_thres)
         )
 
         if self.use_eval:
