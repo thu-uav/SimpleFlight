@@ -5,7 +5,7 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/jiayu/OmniDrones/real2sim/fast/compare/fast_smooth5_large_distance_done.pt
+# model_dir: /home/jiayu/OmniDrones/real2sim/fast/reward/wo_up/fast_smooth0_wo_up_reward.pt
 model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
@@ -24,8 +24,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  # run_name: fast_smooth0_allreward
-  run_name: datt_smooth_traj
+  # run_name: fast_wo_up_eval
+  run_name: datt_smooth_traj_smooth2_wo_up
   # run_name: debug
   job_type: train
   entity: chenjy

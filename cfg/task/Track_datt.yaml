@@ -30,7 +30,7 @@ action_history_step: 5
 # add pos to obs
 use_ab_wolrd_pos: false
 # up
-reward_up_weight: 1.0
+reward_up_weight: 0.0
 # spin
 reward_spin_weight: 1.0
 # acc
