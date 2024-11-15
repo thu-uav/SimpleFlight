@@ -30,7 +30,7 @@ action_history_step: 5
 # use obs normalization
 use_obs_norm: 0
 # use large distance done
-use_infessible_done: 0
+use_infessible_done: 1
 # add pos to obs
 use_ab_wolrd_pos: false
 # random init pos
@@ -52,9 +52,9 @@ reward_jerk_weight_init: 0.0
 reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
 reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 5.0
+reward_action_smoothness_weight_init: 0.0
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 5.0
+reward_smoothness_max: 0.0
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
