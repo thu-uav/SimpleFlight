@@ -220,7 +220,7 @@ if __name__ == "__main__":
     # scale = 1.5, dt: 1.5~4.0 -> v_max = 1.74
     # scale = 2.0, dt: 1.5~4.0 -> v_max = 2.31
     # scale = 2.5, dt: 1.5~4.0 -> v_max = 2.9
-    ref = ChainedPolynomial(num_traj, scale=2.5, min_dt=1.5, max_dt=4.0, degree=5)
+    ref = ChainedPolynomial(num_traj, scale=1.5, min_dt=1.5, max_dt=4.0, degree=5)
 
     t = torch.stack([torch.arange(0, 10, 0.02) for _ in range(num_traj)], dim=0)
 

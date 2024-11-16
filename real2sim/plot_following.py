@@ -9,8 +9,8 @@ start_T = 0
 min_thrust = 0.0
 max_thrust = 0.9
 # sim data
-sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/fast/reward/wo_up/sim_action.pt')
-sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/fast/reward/wo_up/sim_rpy.pt')
+sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/new-smooth_traj/sim_action.pt')
+sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/DATT/new-smooth_traj/sim_rpy.pt')
 sim_target_rpy = torch.stack(sim_target)[:, 0, :3].to('cpu').numpy()[start_T:] * np.pi
 sim_target_thrust = torch.clamp((torch.stack(sim_target)[:, 0, 3].to('cpu')[start_T:] + 1.0) / 2.0, min=min_thrust, max=max_thrust)
 # thrust: 0.6328 # init for hover

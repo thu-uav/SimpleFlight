@@ -38,7 +38,7 @@ use_random_init: false
 # init vel
 use_vel_init: false
 # up
-reward_up_weight: 0.0
+reward_up_weight: 1.0
 # spin
 reward_spin_weight: 1.0
 # yaw penalty
