@@ -332,8 +332,8 @@ class Track_datt(IsaacEnv):
         else: # mixed
             self.ref[0].reset(env_ids)
             self.ref[1].reset(env_ids)
-        # reset the valid traj style
-        self.ref_style_seq[env_ids] = torch.randint(0, 2, (len(env_ids),)).to(self.device)
+            # reset the valid traj style
+            self.ref_style_seq[env_ids] = torch.randint(0, 2, (len(env_ids),)).to(self.device)
 
         pos = torch.zeros(len(env_ids), 3, device=self.device)
         pos = pos + self.origin # init: (0, 0, 1)

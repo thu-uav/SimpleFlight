@@ -23,7 +23,7 @@ future_traj_steps: 10
 
 use_eval: 0
 eval_star: false
-traj_style: 2 # 0 : smooth, 1 : zigzag, 2 : mixed
+traj_style: 0 # 0 : smooth, 1 : zigzag, 2 : mixed
 use_rotor2critic: 0 # need to set critic_input = 'state'
 use_action_history: false
 action_history_step: 5
@@ -42,9 +42,9 @@ reward_jerk_weight_init: 0.0
 reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
 reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 2.0
+reward_action_smoothness_weight_init: 0.0
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 2.0
+reward_smoothness_max: 0.0
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005
