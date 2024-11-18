@@ -14,9 +14,9 @@ force_sensor: false
 time_encoding: false
 intrinsics: false
 wind: false
-latency: false
+latency: true
 latency_step: 1
-random_latency: false
+random_latency: true
 
 reset_thres: 1.
 future_traj_steps: 10
@@ -42,9 +42,9 @@ reward_jerk_weight_init: 0.0
 reward_jerk_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
 reward_jerk_max: 0.0
 # action smoothness
-reward_action_smoothness_weight_init: 0.0
+reward_action_smoothness_weight_init: 2.0
 reward_action_smoothness_weight_lr: 0.0005 # slow: 0.0001, fast: 0.0005
-reward_smoothness_max: 0.0
+reward_smoothness_max: 2.0
 # action norm
 reward_action_norm_weight_init: 0.0
 reward_action_norm_weight_lr: 0.0001 # slow: 0.0001, fast: 0.0005

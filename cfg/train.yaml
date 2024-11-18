@@ -25,7 +25,7 @@ viewer:
 wandb:
   group: ${oc.select:..task.name}
   # run_name: fast_wo_up_eval
-  run_name: datt
+  run_name: datt_random_latency1_smooth2
   # run_name: debug
   job_type: train
   entity: chenjy
