@@ -29,7 +29,7 @@ wandb:
   # run_name: debug
   job_type: train
   entity: chenjy
-  project: simpleflight
+  project: sim2real
   # mode: disabled
   mode: online # set to 'disabled' when debugging locally, online
   run_id: 
