@@ -414,6 +414,7 @@ class PIDRateController(Transform):
         self.target_clip = self.controller.target_clip
         self.max_thrust_ratio = self.controller.max_thrust_ratio
         self.min_thrust_ratio = self.controller.min_thrust_ratio
+        self.LPF_coef = self.controller.LPF_coef
         # self.tanh = TanhTransform()
     
     def transform_input_spec(self, input_spec: TensorSpec) -> TensorSpec:
@@ -434,6 +435,9 @@ class PIDRateController(Transform):
         # raw action error
         ctbr_action = torch.concat([target_rate, target_thrust], dim=-1)
         prev_ctbr_action = tensordict[("info", "prev_action")]
+        
+        # LPF
+        ctbr_action = self.LPF_coef * ctbr_action + (1.0 - self.LPF_coef) * prev_ctbr_action
 
         action_error = torch.norm(ctbr_action - prev_ctbr_action, dim = -1)
         tensordict.set(("stats", "action_error_order1"), action_error)
@@ -500,9 +504,9 @@ class PIDRateController_flightmare(Transform):
         
         # scale
         # target_rate: [-pi, pi]
-        # target_thrust: [0, 15]
+        # target_thrust: [0, 64.4]
         target_rate = target_rate * torch.pi
-        target_thrust = (target_thrust + 1) / 2 * 15.0
+        target_thrust = (target_thrust + 1) / 2 * 64.0
 
         cmds = self.controller(
             drone_state, 

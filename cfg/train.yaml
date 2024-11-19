@@ -5,8 +5,8 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/jiayu/OmniDrones/scripts/outputs/datt_mixed_smooth2/11-17_16-42/wandb/run-20241117_164202-u26ll8c3/files/checkpoint_final.pt
-model_dir: null
+model_dir: /home/jiayu/OmniDrones/real2sim/debug/debug.pt
+# model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
 max_iters: -1
@@ -24,7 +24,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: datt_random_latency1_smooth2
+  run_name: debug
+  # run_name: datt_action_norm10
   # run_name: debug
   job_type: train
   entity: chenjy

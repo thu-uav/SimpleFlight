@@ -449,7 +449,7 @@ class PID_controller_flightmare(nn.Module):
     def forward(
         self, 
         root_state: torch.Tensor, 
-        target_rate: torch.Tensor,   # [rad/s] shape [64, 1]
+        target_rate: torch.Tensor,   # [rad/s]
         target_thrust: torch.Tensor, # [ms-2]
         reset_pid: torch.Tensor
     ):
@@ -527,6 +527,7 @@ class PIDRateController(nn.Module):
         self.max_thrust_ratio = uav_params['max_thrust_ratio']
         self.min_thrust_ratio = uav_params['min_thrust_ratio']
         self.fixed_yaw = uav_params['fixed_yaw']
+        self.LPF_coef = uav_params['LPF_coef']
                 
         self.init_flag = True # init last_body_rate and inte
 

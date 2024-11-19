@@ -1,6 +1,7 @@
 # origin
 update_sim: True
 name: crazyflie
+LPF_coef: 1.0 # low-pass filter, 1.0 means all pass
 target_clip: 1.0
 min_thrust_ratio: 0.0
 max_thrust_ratio: 0.9
