@@ -291,6 +291,9 @@ class Track_datt(IsaacEnv):
             "reward_up": UnboundedContinuousTensorSpec(1),
             "reward_spin": UnboundedContinuousTensorSpec(1),
             "reward_action_smoothness": UnboundedContinuousTensorSpec(1),
+            "reward_action_norm": UnboundedContinuousTensorSpec(1),
+            "reward_acc": UnboundedContinuousTensorSpec(1),
+            "reward_jerk": UnboundedContinuousTensorSpec(1),
             "reward_action_smoothness_scale": UnboundedContinuousTensorSpec(1),
             "reward_action_norm_scale": UnboundedContinuousTensorSpec(1),
             "linear_v_max": UnboundedContinuousTensorSpec(1),
@@ -543,6 +546,9 @@ class Track_datt(IsaacEnv):
         
         self.stats['reward_pos'].add_(reward_pos)
         self.stats['reward_action_smoothness'].add_(reward_action_smoothness)
+        self.stats['reward_action_norm'].add_(reward_action_norm)
+        self.stats['reward_acc'].add_(reward_acc)
+        self.stats['reward_jerk'].add_(reward_jerk)
         self.stats['reward_spin'].add_(reward_pos * reward_spin)
         self.stats['reward_up'].add_(reward_pos * reward_up)
         self.stats['reward_action_smoothness_scale'].set_(self.reward_action_smoothness_weight * torch.ones(self.num_envs, 1, device=self.device))
@@ -589,6 +595,15 @@ class Track_datt(IsaacEnv):
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats['reward_action_smoothness'].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats['reward_action_norm'].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats['reward_acc'].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats['reward_jerk'].div_(
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats["linear_v_mean"].div_(

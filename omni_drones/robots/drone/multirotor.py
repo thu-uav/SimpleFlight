@@ -690,6 +690,7 @@ class MultirotorBase(RobotBase):
         elif "eval" in self.randomization:
             self._randomize(env_ids, self.randomization["eval"])
         init_throttle = self.gravity[env_ids] / self.KF[env_ids].sum(-1, keepdim=True)
+        # init_throttle = 2.0 * self.gravity[env_ids] / self.KF[env_ids].sum(-1, keepdim=True)
         self.throttle[env_ids] = self.rotors.f_inv(init_throttle)
         self.throttle_difference[env_ids] = 0.0
         return env_ids
