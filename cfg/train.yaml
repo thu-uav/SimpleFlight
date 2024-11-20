@@ -5,8 +5,8 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-model_dir: /home/jiayu/OmniDrones/real2sim/debug/debug.pt
-# model_dir: null
+# model_dir: /home/jiayu/OmniDrones/real2sim/mixed/mixed_smooth2.pt
+model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
 max_iters: -1
@@ -24,9 +24,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: debug
-  # run_name: datt_action_norm10
-  # run_name: debug
+  run_name: air_smooth0
+  # run_name: datt_LPF_0_5
   job_type: train
   entity: chenjy
   project: sim2real
