@@ -11,7 +11,7 @@ inertia:
   yy: 0.006
   yz: 0.0
   zz: 0.00977
-mass: 0.977
+mass: 0.845
 l: 0.250
 drag_coef: 0.0
 rotor_configuration:

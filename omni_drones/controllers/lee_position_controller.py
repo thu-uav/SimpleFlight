@@ -431,7 +431,7 @@ class RateController(nn.Module):
         return cmd
 
 class PID_controller_flightmare(nn.Module):
-    def __init__(self, device):
+    def __init__(self, dt, device):
         super().__init__()
         self.P_gain = nn.Parameter(torch.tensor([0.11, 0.11, 0.2]))
         self.I_gain = nn.Parameter(torch.tensor([0.008, 0.008, 0.01]))
@@ -439,12 +439,14 @@ class PID_controller_flightmare(nn.Module):
         self.FF_gain = nn.Parameter(torch.tensor([0.0, 0.0, 0.0]))
         self.K = nn.Parameter(torch.tensor([1., 1., 1.]))
         self.Int_lim = nn.Parameter(torch.tensor([1.00, 1.00, 1.00]))
-        self.fs, self.fc, self.dt = 50.0, 40.0, 0.01
+        self.fs, self.fc = 50.0, 40.0
+        self.dt = dt
         self.init_flag = True # init last_body_rate and inte
         self.allocation_matrix_inv = torch.tensor([[0.25, 2.82842865,-2.82842865, 15.625],
                                                     [0.25,-2.82842865,-2.82842865,-15.625],
                                                     [0.25,-2.82842865, 2.82842865, 15.625],
                                                     [0.25, 2.82842865, 2.82842865,-15.625]], device=device)
+        self.mass = 0.992
     
     def forward(
         self, 
@@ -490,7 +492,7 @@ class PID_controller_flightmare(nn.Module):
         self.integ = torch.clip(self.integ, -self.Int_lim, self.Int_lim)
 
         # --------rate controller end, next comes mixer-------------
-        force_des = target_thrust * 0.977
+        force_des = target_thrust * self.mass
         thrust_and_ang_acc = torch.concatenate((force_des, angacc_desire), dim=-1) # [1,64,4]
         thrust_and_ang_acc = thrust_and_ang_acc.unsqueeze(dim=-1) # [1,64,4,1]
         motor_thrusts_des = torch.matmul(self.allocation_matrix_inv, thrust_and_ang_acc) # [1,64,4,1]

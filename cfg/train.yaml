@@ -24,8 +24,9 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: air_smooth0
-  # run_name: datt_LPF_0_5
+  run_name: air_debug
+  # run_name: crazyflie_debug
+  # run_name: datt_smooth2_batch2048
   job_type: train
   entity: chenjy
   project: sim2real
@@ -36,8 +37,8 @@ wandb:
   tags: 
 
 defaults:
-  # - task: Track
-  - task: Track_datt
+  - task: Track
+  # - task: Track_datt
   # - task: Hover
   - algo: mappo
   - _self_

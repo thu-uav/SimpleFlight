@@ -239,7 +239,6 @@ class MultirotorBase(RobotBase):
         )
         self.rotor_pos_offset = torch.zeros(*self.shape, self.num_rotors, 3, device=self.device)
 
-        # self.masses = self.base_link.get_masses().clone()
         # set by yaml
         self.masses = torch.ones_like(self.base_link.get_masses().clone()) * self.mass
         self.base_link.set_masses(self.masses)
@@ -275,135 +274,6 @@ class MultirotorBase(RobotBase):
         # rotor_config['rotor_angles'] = self.rotor_angles.tolist()
         rotor_config['time_constant'] = self.time_constant
         return rotor_config
-
-    # for simopt, initialization by tunableparameters
-    def initialize_byTunablePara(
-        self, 
-        prim_paths_expr: str = None,
-        track_contact_forces: bool = False,
-        tunable_parameters: dict = {},
-    ):
-        """
-            setup tunable_parameters
-        """
-        self.setup_tunable_parameters(params=tunable_parameters)
-        
-        if self.is_articulation:
-            super().initialize(prim_paths_expr=prim_paths_expr)
-            self.base_link = RigidPrimView(
-                prim_paths_expr=f"{self.prim_paths_expr}/base_link",
-                name="base_link",
-                track_contact_forces=track_contact_forces,
-                shape=self.shape,
-            )
-            self.base_link.initialize()
-            # print(self._view.dof_names)
-            # print(self._view._dof_indices)
-            rotor_joint_indices = [
-                i for i, dof_name in enumerate(self._view._dof_names) 
-                if dof_name.startswith("rotor")
-            ]
-            if len(rotor_joint_indices):
-                self.rotor_joint_indices = torch.tensor(
-                    rotor_joint_indices,
-                    device=self.device
-                )
-            else:
-                self.rotor_joint_indices = None
-        else:
-            super().initialize(prim_paths_expr=f"{prim_paths_expr}/base_link")
-            self.base_link = self._view
-            self.prim_paths_expr = prim_paths_expr
-
-        self.rotors_view = RigidPrimView(
-            # prim_paths_expr=f"{self.prim_paths_expr}/rotor_[0-{self.num_rotors-1}]",
-            prim_paths_expr=f"{self.prim_paths_expr}/rotor_*",
-            name="rotors",
-            shape=(*self.shape, self.num_rotors)
-        )
-        self.rotors_view.initialize()
-
-        rotor_config = self.params["rotor_configuration"]
-        # jiayu: setup
-        rotor_config = self.reset_rotor_config(rotor_config)
-        self.rotors = RotorGroup(rotor_config, dt=self.dt).to(self.device)
-
-        rotor_params = make_functional(self.rotors)
-        self.KF_0 = rotor_params["KF"].clone()
-        self.KM_0 = rotor_params["KM"].clone()
-        # self.MAX_ROT_VEL = (
-        #     torch.as_tensor(rotor_config["max_rotation_velocities"])
-        #     .float()
-        #     .to(self.device)
-        # )
-        # jiayu: setup
-        self.MAX_ROT_VEL = (
-            torch.as_tensor(self.max_rotation_velocities)
-            .float()
-            .to(self.device)
-        )
-        self.rotor_params = rotor_params.expand(self.shape).clone()
-
-        self.tau_up = self.rotor_params["tau_up"]
-        self.tau_down = self.rotor_params["tau_down"]
-        self.KF = self.rotor_params["KF"]
-        self.KM = self.rotor_params["KM"]
-        self.throttle = self.rotor_params["throttle"]
-        self.directions = self.rotor_params["directions"]
-
-        self.thrusts = torch.zeros(*self.shape, self.num_rotors, 3, device=self.device)
-        self.torques = torch.zeros(*self.shape, 3, device=self.device)
-        self.forces = torch.zeros(*self.shape, 3, device=self.device)
-
-        self.pos, self.rot = self.get_world_poses(True)
-        self.throttle_difference = torch.zeros(self.throttle.shape[:-1], device=self.device)
-        self.heading = torch.zeros(*self.shape, 3, device=self.device)
-        self.lateral = torch.zeros(*self.shape, 3, device=self.device)
-        self.up = torch.zeros(*self.shape, 3, device=self.device)
-        self.vel = self.vel_w = torch.zeros(*self.shape, 6, device=self.device)
-        self.vel_b = torch.zeros_like(self.vel_w)
-        self.acc = self.acc_w = torch.zeros(*self.shape, 6, device=self.device)
-        self.acc_b = torch.zeros_like(self.acc_w)
-
-        self.jerk = torch.zeros(*self.shape, 6, device=self.device)
-        self.alpha = 0.9
-
-        self.rotor_pos_0 = (
-            self.rotors_view.get_world_poses()[0][0] 
-            - self.pos[0].unsqueeze(1)
-        )
-        self.rotor_pos_offset = torch.zeros(*self.shape, self.num_rotors, 3, device=self.device)
-
-        # self.masses = self.base_link.get_masses().clone()
-        # jiayu: setup
-        self.masses = torch.ones_like(self.base_link.get_masses().clone()) * self.mass
-        self.base_link.set_masses(self.masses)
-        self.gravity = self.masses * 9.81
-        # self.inertias = self.base_link.get_inertias().reshape(*self.shape, 3, 3).diagonal(0, -2, -1)
-        # jiayu: setup
-        self.inertias = torch.ones(self.shape).unsqueeze(-1).repeat(1,1,3).to(self.device)
-        self.inertias[...,0] = self.inertia_xx
-        self.inertias[...,1] = self.inertia_yy
-        self.inertias[...,2] = self.inertia_zz
-        # expand inertias as [1, batch, 3, 3]
-        setup_inertias = torch.diag(self.inertias[0,0,:]).unsqueeze(0).unsqueeze(0).repeat(1,self.shape[1],1,1)
-        self.base_link.set_inertias(setup_inertias)
-        # default/initial parameters
-        self.MASS_0 = self.masses[0].clone()
-        # self.INERTIA_0 = (
-        #     self.base_link.get_inertias().reshape(*self.shape, 3, 3)[0]
-        #     .diagonal(0, -2, -1)
-        #     .clone()
-        # )
-        # jiayu: setup
-        self.INERTIA_0 = self.inertias.clone().squeeze(0)
-        self.THRUST2WEIGHT_0 = self.KF_0 / (self.MASS_0 * 9.81) # TODO: get the real g
-        self.FORCE2MOMENT_0 = torch.broadcast_to(self.KF_0 / self.KM_0, self.THRUST2WEIGHT_0.shape)
-        
-        # logging.info(str(self))
-
-        self.drag_coef = torch.zeros(*self.shape, 1, device=self.device) * self.drag_coef_para
-        self.intrinsics = self.intrinsics_spec.expand(self.shape).zero()
 
     def setup_randomization(self, cfg):
         if not self.initialized:
@@ -690,7 +560,6 @@ class MultirotorBase(RobotBase):
         elif "eval" in self.randomization:
             self._randomize(env_ids, self.randomization["eval"])
         init_throttle = self.gravity[env_ids] / self.KF[env_ids].sum(-1, keepdim=True)
-        # init_throttle = 2.0 * self.gravity[env_ids] / self.KF[env_ids].sum(-1, keepdim=True)
         self.throttle[env_ids] = self.rotors.f_inv(init_throttle)
         self.throttle_difference[env_ids] = 0.0
         return env_ids

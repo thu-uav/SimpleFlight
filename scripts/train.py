@@ -177,7 +177,7 @@ def main(cfg):
         elif action_transform == "PIDrate_FM":
             from omni_drones.controllers import PID_controller_flightmare as _PID_controller_flightmare
             from omni_drones.utils.torchrl.transforms import PIDRateController_flightmare
-            controller = _PID_controller_flightmare(base_env.device).to(base_env.device)
+            controller = _PID_controller_flightmare(cfg.sim.dt, base_env.device).to(base_env.device)
             transform = PIDRateController_flightmare(controller)
             # transforms.append(TanhTransform)
             transforms.append(transform)

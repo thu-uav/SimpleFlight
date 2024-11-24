@@ -507,7 +507,7 @@ class PIDRateController_flightmare(Transform):
         # target_thrust: [0, 64.4]
         target_rate = target_rate * torch.pi
         target_thrust = (target_thrust + 1) / 2 * 15.0
-
+        
         cmds = self.controller(
             drone_state, 
             target_rate=target_rate,
