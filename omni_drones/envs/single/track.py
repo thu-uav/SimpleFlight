@@ -302,6 +302,7 @@ class Track(IsaacEnv):
             "return": UnboundedContinuousTensorSpec(1),
             "episode_len": UnboundedContinuousTensorSpec(1),
             "tracking_error": UnboundedContinuousTensorSpec(1),
+            "tracking_error_xy": UnboundedContinuousTensorSpec(1),
             "tracking_error_ema": UnboundedContinuousTensorSpec(1),
             "action_error_order1_mean": UnboundedContinuousTensorSpec(1),
             "action_error_order1_max": UnboundedContinuousTensorSpec(1),
@@ -545,7 +546,9 @@ class Track(IsaacEnv):
     def _compute_reward_and_done(self):
         # pos reward
         distance = torch.norm(self.rpos[:, [0]], dim=-1)
+        distance_xy = torch.norm(self.rpos[:, [0]][..., :2], dim=-1)
         self.stats["tracking_error"].add_(-distance)
+        self.stats["tracking_error_xy"].add_(-distance_xy)
         self.stats["tracking_error_ema"].lerp_(distance, (1-self.alpha))
         
         reward_pos = self.reward_distance_scale * torch.exp(-distance)
@@ -615,6 +618,9 @@ class Track(IsaacEnv):
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats["tracking_error"].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats["tracking_error_xy"].div_(
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats['action_error_order1_mean'].div_(

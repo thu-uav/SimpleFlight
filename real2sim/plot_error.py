@@ -17,17 +17,17 @@ def lemniscate_v(t, T):
     
     return x, v
 
-T = 5.5  # 周期
-df = pd.read_csv('/home/jiayu/OmniDrones/real2sim/fly_in_seconds/T5_5.csv', skip_blank_lines=True)
-time = df[['pos.time']].to_numpy().squeeze()
-time = (time - time[0]) / 1e9
-pos = df[['pos.x', 'pos.y', 'pos.z']].to_numpy()
-offset = pos[0]
-target_x, v = lemniscate_v(time + 0.25 * T, T)
+T = 520
+df = pd.read_csv('/home/jiayu/OmniDrones/real2sim/zigzag_0_2.csv', skip_blank_lines=True)
+error = df[['rltte.x', 'rltte.y', 'rltte.z']].to_numpy()[:T]
+print('error: ', np.linalg.norm(error[:, :2], axis=-1).mean())
+real_pos = df[['rltrp.x', 'rltrp.y', 'rltrp.z']].to_numpy()[:T]
+target_pos = real_pos + error
 
 plt.figure(figsize=(12, 6))
-plt.plot(target_x[:,0], target_x[:, 1], label='Target')
-plt.plot(pos[:, 0], pos[:, 1], label='Real')
+plt.plot(target_pos[:T,0], target_pos[:T, 1], label='target')
+plt.plot(real_pos[:T,0], real_pos[:T, 1], label='real')
+# plt.plot(pos[:, 0], pos[:, 1], label='Real')
 plt.xlabel('x')
 plt.ylabel('y')
 plt.legend()

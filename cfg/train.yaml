@@ -5,10 +5,10 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/jiayu/OmniDrones/real2sim/mixed/mixed_smooth2.pt
+# model_dir: /home/jiayu/OmniDrones/real2sim/batch/batch8192.pt
 model_dir: null
 
-total_frames: 9000_000_000 #1000_000_000
+total_frames: 18000_000_000 #1000_000_000
 max_iters: -1
 eval_interval: -1
 save_interval: 100
@@ -24,9 +24,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: air_debug
-  # run_name: crazyflie_debug
-  # run_name: datt_smooth2_batch2048
+  # run_name: batch4096
+  run_name: obs_ablation
   job_type: train
   entity: chenjy
   project: sim2real
@@ -37,8 +36,8 @@ wandb:
   tags: 
 
 defaults:
-  - task: Track
-  # - task: Track_datt
+  # - task: Track
+  - task: Track_datt
   # - task: Hover
   - algo: mappo
   - _self_
