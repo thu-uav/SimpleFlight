@@ -5,7 +5,7 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/jiayu/OmniDrones/real2sim/batch/batch8192.pt
+# model_dir: /home/jiayu/OmniDrones/real2sim/bacth8192.pt
 model_dir: null
 
 total_frames: 18000_000_000 #1000_000_000
@@ -24,8 +24,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  # run_name: batch4096
-  run_name: obs_ablation
+  run_name: obs_best
+  # run_name: mass_bias_add_0_1
   job_type: train
   entity: chenjy
   project: sim2real
@@ -36,8 +36,8 @@ wandb:
   tags: 
 
 defaults:
-  # - task: Track
-  - task: Track_datt
+  - task: Track
+  # - task: Track_datt
   # - task: Hover
   - algo: mappo
   - _self_

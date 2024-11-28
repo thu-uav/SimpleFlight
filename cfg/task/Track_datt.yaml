@@ -56,9 +56,9 @@ reward_distance_scale: 5.0
 action_transform: PIDrate
 # action_transform: PIDrate_FM
 # history: true
-# randomization:
-#   drone:
-#     train:
-#       mass_scale: [0.9, 1.1]
+randomization:
+  drone:
+    train:
+      mass_scale: [1.1, 1.1]
 #       inertia_scale: [0.9, 1.1]
 #       drag_coef: [0.9, 1.1]

@@ -17,8 +17,8 @@ def lemniscate_v(t, T):
     
     return x, v
 
-T = 520
-df = pd.read_csv('/home/jiayu/OmniDrones/real2sim/zigzag_0_2.csv', skip_blank_lines=True)
+T = 600
+df = pd.read_csv('/home/jiayu/OmniDrones/real2sim/smooth_4_2.csv', skip_blank_lines=True)
 error = df[['rltte.x', 'rltte.y', 'rltte.z']].to_numpy()[:T]
 print('error: ', np.linalg.norm(error[:, :2], axis=-1).mean())
 real_pos = df[['rltrp.x', 'rltrp.y', 'rltrp.z']].to_numpy()[:T]
@@ -33,4 +33,4 @@ plt.ylabel('y')
 plt.legend()
 # 显示图形
 plt.tight_layout()
-plt.savefig('figure8')
+plt.savefig('smooth_4_2')
