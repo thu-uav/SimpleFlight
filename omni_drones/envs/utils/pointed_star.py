@@ -142,11 +142,26 @@ if __name__ == '__main__':
     
     datetime = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime(time.time()))
     
-    t = torch.arange(0, 10, 0.01, dtype=torch.float32)
+    t = torch.arange(0, 10, 0.001, dtype=torch.float32)
     ref = NPointedStar(t.shape[0], 5, speed=1.0, radius=0.7)
     
     pos = ref.pos(t).cpu().numpy()
     vel = ref.vel(t).cpu().numpy()
+    def save_to_header(variable_name, data, filename):
+        with open(filename, 'w') as f:
+            f.write(f'static const float {variable_name}[{data.shape[0]}][{data.shape[1]}] = {{\n')
+            for i in range(data.shape[0]):
+                f.write('    {')
+                f.write(', '.join(f'{value}f' for value in data[i]))
+                f.write('}')
+                if i < data.shape[0] - 1:
+                    f.write(',\n')
+                else:
+                    f.write('\n')
+            f.write('};\n')
+
+    save_to_header('pos_star', pos, 'pos_star.h')
+    save_to_header('vel_star', vel, 'vel_star.h')
 
     idx = 0
     # plot 3D traj and save

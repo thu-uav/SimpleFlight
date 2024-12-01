@@ -11,7 +11,7 @@ inertia:
   yy: 0.006
   yz: 0.0
   zz: 0.00977
-mass: 0.845
+mass: 0.804 # add 0.147
 l: 0.250
 drag_coef: 0.0
 rotor_configuration:
@@ -29,10 +29,10 @@ rotor_configuration:
   # 1/4mg = (mean_hover_pwm / 2**16) * omega_max^2 * force_constants
   # force_constants = 1/4mg * kf / omega_max^2
   # kf = force_constants * omega_max^2 / 1/4mg
-  - 8.54858e-06
-  - 8.54858e-06
-  - 8.54858e-06
-  - 8.54858e-06
+  - 5.324869276454953e-06
+  - 5.324869276454953e-06
+  - 5.324869276454953e-06
+  - 5.324869276454953e-06
   max_rotation_velocities:     
   - 1356.6      # rad/s
   - 1356.6
@@ -49,7 +49,8 @@ rotor_configuration:
   - 2.35619449
   - 3.92699082
   - 5.49778714
-  time_constant: 0.013579523542877694 # fm motor_tau
+  # time_constant: 0.013579523542877694 # dt = 0.01
+  time_constant: 0.027159047085755388 # dt = 0.02
   noise_scale: 0.0 # default: 2% noise for rotor speed
 controller_configuration:
   gain:

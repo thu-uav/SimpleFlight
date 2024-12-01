@@ -150,11 +150,11 @@ class RandomZigzag(BaseTrajectory):
 
 
 if __name__ == "__main__":
-    num_traj = 5000
+    num_traj = 5
     # dt: 1.0~1.5 -> v_max = 1.98
     ref = RandomZigzag(num_traj, max_D=[1., 1., 0.0], min_dt=1.0, max_dt=1.5, diff_axis=True)
 
-    t = torch.stack([torch.arange(0, 10, 0.02) for _ in range(num_traj)], dim=0)
+    t = torch.stack([torch.arange(0, 10, 0.001) for _ in range(num_traj)], dim=0)
 
     pos = []
     vel = []
@@ -164,8 +164,28 @@ if __name__ == "__main__":
 
     pos = torch.stack(pos, dim=1).cpu().numpy()
     vel = torch.stack(vel, dim=1).cpu().numpy()
+    def save_to_header(variable_name, data, filename):
+        with open(filename, 'w') as f:
+            f.write(f'static const float {variable_name}[{data.shape[0]}][{data.shape[1]}][{data.shape[2]}] = {{\n')
+            for i in range(data.shape[0]):
+                f.write('  {\n')
+                for j in range(data.shape[1]):
+                    values = ', '.join(f'{value}f' for value in data[i][j])
+                    f.write(f'    {{{values}}}')
+                    if j < data.shape[1] - 1:
+                        f.write(',\n')
+                    else:
+                        f.write('\n')
+                f.write('  }')
+                if i < data.shape[0] - 1:
+                    f.write(',\n')
+                else:
+                    f.write('\n')
+            f.write('};\n')
+
+    save_to_header('pos_zigzag', pos, 'pos_zigzag.h')
+    save_to_header('vel_zigzag', vel, 'vel_zigzag.h')
     import numpy as np
-    breakpoint()
 
     plot_idx = 0
     import matplotlib.pyplot as plt

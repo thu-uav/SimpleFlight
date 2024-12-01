@@ -216,13 +216,13 @@ class ChainedPolynomial(BaseTrajectory):
     
 
 if __name__ == "__main__":
-    num_traj = 5000
+    num_traj = 5
     # scale = 1.5, dt: 1.5~4.0 -> v_max = 1.74
     # scale = 2.0, dt: 1.5~4.0 -> v_max = 2.31
     # scale = 2.5, dt: 1.5~4.0 -> v_max = 2.9
     ref = ChainedPolynomial(num_traj, scale=1.0, min_dt=1.5, max_dt=4.0, degree=5)
 
-    t = torch.stack([torch.arange(0, 10, 0.02) for _ in range(num_traj)], dim=0)
+    t = torch.stack([torch.arange(0, 10, 0.004) for _ in range(num_traj)], dim=0)
 
     pos = []
     vel = []
@@ -242,9 +242,30 @@ if __name__ == "__main__":
     jerk = torch.stack(jerk, dim=1).cpu().numpy()
     snap = torch.stack(snap, dim=1).cpu().numpy()
     import numpy as np
+    def save_to_header(variable_name, data, filename):
+        with open(filename, 'w') as f:
+            f.write(f'static const float {variable_name}[{data.shape[0]}][{data.shape[1]}][{data.shape[2]}] = {{\n')
+            for i in range(data.shape[0]):
+                f.write('  {\n')
+                for j in range(data.shape[1]):
+                    values = ', '.join(f'{value}f' for value in data[i][j])
+                    f.write(f'    {{{values}}}')
+                    if j < data.shape[1] - 1:
+                        f.write(',\n')
+                    else:
+                        f.write('\n')
+                f.write('  }')
+                if i < data.shape[0] - 1:
+                    f.write(',\n')
+                else:
+                    f.write('\n')
+            f.write('};\n')
+
+    save_to_header('pos_smooth', pos, 'pos_smooth.h')
+    save_to_header('vel_smooth', vel, 'vel_smooth.h')
     breakpoint()
 
-    plot_idx = 5
+    plot_idx = 1
     import matplotlib.pyplot as plt
     import time
     

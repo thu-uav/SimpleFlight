@@ -24,8 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: obs_best
-  # run_name: mass_bias_add_0_1
+  run_name: inertia_bias_add_0_1
   job_type: train
   entity: chenjy
   project: sim2real
@@ -36,8 +35,8 @@ wandb:
   tags: 
 
 defaults:
-  - task: Track
-  # - task: Track_datt
+  # - task: Track
+  - task: Track_datt
   # - task: Hover
   - algo: mappo
   - _self_
