@@ -327,6 +327,14 @@ class MultirotorBase(RobotBase):
                     torch.tensor(tau_down[0], device=self.device),
                     torch.tensor(tau_down[1], device=self.device)
                 )
+            tau_scale = cfg[phase].get("tau_scale", None)
+            if tau_scale is not None:
+                low = self.tau_up[0,0,0].item() * tau_scale[0]
+                high = self.tau_up[0,0,0].item() * tau_scale[1]
+                self.randomization[phase]["tau"] = D.Uniform(
+                    torch.tensor(low, device=self.device),
+                    torch.tensor(high, device=self.device)
+                )
             if not len(self.randomization[phase]) == len(cfg[phase]):
                 unkown_keys = set(cfg[phase].keys()) - set(self.randomization[phase].keys())
                 raise ValueError(
@@ -610,6 +618,12 @@ class MultirotorBase(RobotBase):
             tau_down = distributions["tau_down"].sample(shape+self.rotors_view.shape[1:])
             self.tau_down[env_ids] = tau_down
             self.intrinsics["tau_down"][env_ids] = tau_down
+        if "tau" in distributions:
+            tau = distributions["tau"].sample(shape+self.rotors_view.shape[1:])
+            self.tau_down[env_ids] = tau
+            self.tau_up[env_ids] = tau
+            self.intrinsics["tau_down"][env_ids] = tau
+            self.intrinsics["tau_up"][env_ids] = tau
     
     def get_thrust_to_weight_ratio(self):
         return self.KF.sum(-1, keepdim=True) / (self.masses * 9.81)

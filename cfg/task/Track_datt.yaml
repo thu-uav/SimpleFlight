@@ -60,5 +60,6 @@ randomization:
   drone:
     train:
       # mass_scale: [1.1, 1.1]
-      inertia_scale: [1.1, 1.1]
-#       drag_coef: [0.9, 1.1]
+      # inertia_scale: [1.1, 1.1]
+      # drag_coef: [0.9, 1.1]
+      tau_scale: [1.1, 1.1]
