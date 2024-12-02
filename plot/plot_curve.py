@@ -32,6 +32,7 @@ for algo in algorithms:
     std_curves[algo] = data[algo].std(axis=-1)
 
 plt.rcParams.update({'font.size': 20})
+plt.style.use("ggplot")
 plt.figure(figsize=(10, 6))
 for algo in algorithms:
     mean_curve = mean_curves[algo]
@@ -51,7 +52,9 @@ for algo in algorithms:
 # plt.title('Training Curves with Mean and Standard Deviation')
 plt.xlabel('Training Epoch', fontsize=20)
 plt.ylabel('Tracking Error', fontsize=20)
-plt.legend()
+plt.xticks(fontsize=20)
+plt.yticks(fontsize=20)
+plt.legend(fontsize=20)
 plt.grid(True)
 plt.tight_layout()
 plt.savefig('obs')

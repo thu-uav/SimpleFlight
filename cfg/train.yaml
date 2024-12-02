@@ -24,7 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: air
+  run_name: air_mixed8
   # run_name: debug
   job_type: train
   entity: chenjy
@@ -36,8 +36,8 @@ wandb:
   tags: 
 
 defaults:
-  # - task: Track
-  - task: Track_datt
+  - task: Track
+  # - task: Track_datt
   # - task: Hover
   - algo: mappo
   - _self_

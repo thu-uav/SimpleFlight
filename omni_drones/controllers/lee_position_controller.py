@@ -446,7 +446,7 @@ class PID_controller_flightmare(nn.Module):
                                                     [0.25,-2.82842865,-2.82842865,-15.625],
                                                     [0.25,-2.82842865, 2.82842865, 15.625],
                                                     [0.25, 2.82842865, 2.82842865,-15.625]], device=device)
-        self.mass = 0.992
+        self.mass = 0.951
     
     def forward(
         self, 
