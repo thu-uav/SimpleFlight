@@ -24,7 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: tau_bias_add_0_1
+  run_name: air
   # run_name: debug
   job_type: train
   entity: chenjy
