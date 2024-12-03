@@ -438,7 +438,7 @@ class PID_controller_flightmare(nn.Module):
         self.mass = uav_params['mass'] + 0.147 # add (imu and rotors)
         self.inertia = torch.tensor([uav_params['inertia']['xx'], uav_params['inertia']['yy'], uav_params['inertia']['zz']])
         self.arm_length = self.rotor_config['arm_lengths'][0]
-        self.K = 0.0178
+        self.K_coef = 0.0178
         self.J_fm = torch.tensor([0.00586, 0.006, 0.00977])
         self.P_gain = nn.Parameter(torch.tensor([0.11, 0.11, 0.2]) / self.J_fm * self.inertia)
         self.I_gain = nn.Parameter(torch.tensor([0.008, 0.008, 0.01]) / self.J_fm * self.inertia)
@@ -450,10 +450,10 @@ class PID_controller_flightmare(nn.Module):
         self.dt = dt
         self.init_flag = True # init last_body_rate and inte
         self.max_thrust = 15.73
-        self.allocation_matrix_inv = torch.tensor([[0.25, 2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K)],
-                                                    [0.25, -2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K)],
-                                                    [0.25, -2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K)],
-                                                    [0.25, 2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K)]], device=device)
+        self.allocation_matrix_inv = torch.tensor([[0.25, 2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K_coef)],
+                                                    [0.25, -2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K_coef)],
+                                                    [0.25, -2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K_coef)],
+                                                    [0.25, 2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K_coef)]], device=device)
     
     def forward(
         self, 
@@ -518,7 +518,7 @@ class PID_controller_flightmare(nn.Module):
 #         self.mass = uav_params['mass'] + 0.147 # add (imu and rotors)
 #         self.inertia = torch.tensor([uav_params['inertia']['xx'], uav_params['inertia']['yy'], uav_params['inertia']['zz']])
 #         self.arm_length = self.rotor_config['arm_lengths'][0]
-#         self.K = 0.0178
+#         self.K_coef = 0.0178
 #         self.P_gain = nn.Parameter(torch.tensor([0.08, 0.08, 0.25]))
 #         self.I_gain = nn.Parameter(torch.tensor([0.3, 0.3, 0.1]))
 #         self.D_gain = nn.Parameter(torch.tensor([0.002, 0.002, 0]))
@@ -529,10 +529,10 @@ class PID_controller_flightmare(nn.Module):
 #         self.dt = dt
 #         self.init_flag = True # init last_body_rate and inte
 #         self.max_thrust = 15.73
-#         self.allocation_matrix_inv = torch.tensor([[0.25, 2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K)],
-#                                                     [0.25, -2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K)],
-#                                                     [0.25, -2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K)],
-#                                                     [0.25, 2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K)]], device=device)
+#         self.allocation_matrix_inv = torch.tensor([[0.25, 2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K_coef)],
+#                                                     [0.25, -2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K_coef)],
+#                                                     [0.25, -2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K_coef)],
+#                                                     [0.25, 2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K_coef)]], device=device)
     
 #     def forward(
 #         self, 
