@@ -24,7 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: air_mixed8_controllerv1
+  run_name: air_mixed8_controllerv2
   # run_name: debug
   job_type: train
   entity: chenjy
