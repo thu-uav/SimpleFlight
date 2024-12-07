@@ -448,8 +448,8 @@ class PID_controller_flightmare(nn.Module):
         self.fs, self.fc = 50.0, 40.0
         self.dt = dt
         self.init_flag = True # init last_body_rate and inte
-        # self.max_thrust = 15.73
-        self.max_thrust = 10.3659
+        # self.max_thrust = 10.3659
+        self.max_thrust = self.rotor_config['force_constants'][0] * self.rotor_config['max_rotation_velocities'][0]**2
         self.allocation_matrix_inv = torch.tensor([[0.25, 2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K_coef)],
                                                     [0.25, -2**0.5 / (4 * self.arm_length), -2**0.5 / (4 * self.arm_length), -1 / (4.0 * self.K_coef)],
                                                     [0.25, -2**0.5 / (4 * self.arm_length), 2**0.5 / (4 * self.arm_length), 1 / (4.0 * self.K_coef)],
