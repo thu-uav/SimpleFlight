@@ -504,7 +504,7 @@ class PIDRateController_flightmare(Transform):
         
         # scale
         # target_rate: [-pi, pi]
-        # target_thrust: [0, 64.4]
+        # target_thrust: [0, 15.0]
         target_rate = target_rate * torch.pi
         target_thrust = (target_thrust + 1) / 2 * 15.0
         
@@ -514,6 +514,8 @@ class PIDRateController_flightmare(Transform):
             target_thrust=target_thrust,
             reset_pid=tensordict['done'].expand(-1, drone_state.shape[1]) # num_drones: drone_state.shape[1]
         )
+        # cmds[:] = -0.7035, # 9.81对应的real output, v2
+        # cmds[:] = -0.88102558 # hover, kf = 2.129947710581981e-05
         torch.nan_to_num_(cmds, 0.)
         tensordict.set(self.action_key, cmds)
         tensordict.set('target_rate', target_rate)

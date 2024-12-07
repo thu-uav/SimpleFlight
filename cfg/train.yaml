@@ -5,7 +5,7 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/jiayu/OmniDrones/scripts/outputs/air_mixed8_controllerv1/12-03_16-15/wandb/run-20241203_161535-hffiqcst/files/checkpoint_47366400.pt
+# model_dir: /home/jiayu/OmniDrones/real2sim/air_mixed.pt
 model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
@@ -24,8 +24,8 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: air_mixed8_controllerv2
-  # run_name: debug
+  # run_name: smoothness10
+  run_name: debug
   job_type: train
   entity: chenjy
   project: sim2real

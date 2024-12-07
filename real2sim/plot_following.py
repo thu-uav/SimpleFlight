@@ -9,17 +9,16 @@ start_T = 0
 min_thrust = 0.0
 max_thrust = 1.0
 # sim data
-sim_target = torch.load('/home/jiayu/OmniDrones/real2sim/FM/sim_action.pt')
-sim_real = torch.load('/home/jiayu/OmniDrones/real2sim/FM/sim_rpy.pt')
+sim_target = torch.load('/home/jiayu/OmniDrones/scripts/sim_action.pt')
+sim_real = torch.load('/home/jiayu/OmniDrones/scripts/sim_rpy.pt')
 sim_target_rpy = torch.stack(sim_target)[:, 0, :3].to('cpu').numpy()[start_T:] * np.pi
 sim_target_thrust = torch.clamp((torch.stack(sim_target)[:, 0, 3].to('cpu')[start_T:] + 1.0) / 2.0, min=min_thrust, max=max_thrust)
 # thrust: 0.6328 # init for hover, crazyflie
-# thrust: -0.64954808 # init for hover, crazyflie
-init_hover_thrust = torch.ones_like(sim_target_thrust) * 0.6328
+# thrust: 0.4879 # init for hover, air
+init_hover_thrust = torch.ones_like(sim_target_thrust) * 0.4879
 sim_target_thrust = sim_target_thrust.numpy()
 sim_real_rpy = torch.stack(sim_real)[:-1, 0, :3].to('cpu').numpy()[start_T:]
 time_steps = np.arange(len(sim_target_thrust))
-breakpoint()
 
 # real data: load from rosbag   
 if not plot_sim:     

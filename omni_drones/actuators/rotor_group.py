@@ -60,6 +60,7 @@ class RotorGroup(nn.Module):
         # jiayu: replace tau by dt / time_constant
         tau = self.dt / tau
         # throttle(t + dt) = throttle(t) * (1 - tau) + target_throttle * tau
+        
         self.throttle.add_(tau * (target_throttle - self.throttle))
 
         self.noise = torch.randn_like(self.throttle) * self.noise_scale
