@@ -77,6 +77,9 @@ class Track_datt(IsaacEnv):
         self.reward_jerk_weight_init = cfg.task.reward_jerk_weight_init
         self.reward_jerk_weight_lr = cfg.task.reward_jerk_weight_lr
         self.reward_jerk_max = cfg.task.reward_jerk_max
+        self.reward_snap_weight_init = cfg.task.reward_snap_weight_init
+        self.reward_snap_weight_lr = cfg.task.reward_snap_weight_lr
+        self.reward_snap_max = cfg.task.reward_snap_max
         # action norm and smoothness
         self.reward_action_smoothness_weight_init = cfg.task.reward_action_smoothness_weight_init
         self.reward_action_smoothness_weight_lr = cfg.task.reward_action_smoothness_weight_lr
@@ -302,12 +305,14 @@ class Track_datt(IsaacEnv):
             "angular_a_max": UnboundedContinuousTensorSpec(1),
             "linear_jerk_max": UnboundedContinuousTensorSpec(1),
             "angular_jerk_max": UnboundedContinuousTensorSpec(1),
+            "linear_snap_max": UnboundedContinuousTensorSpec(1),
             "linear_v_mean": UnboundedContinuousTensorSpec(1),
             "angular_v_mean": UnboundedContinuousTensorSpec(1),
             "linear_a_mean": UnboundedContinuousTensorSpec(1),
             "angular_a_mean": UnboundedContinuousTensorSpec(1),
             "linear_jerk_mean": UnboundedContinuousTensorSpec(1),
             "angular_jerk_mean": UnboundedContinuousTensorSpec(1),
+            "linear_snap_mean": UnboundedContinuousTensorSpec(1),
             "obs_range": UnboundedContinuousTensorSpec(1),
         }).expand(self.num_envs).to(self.device)
         info_spec = CompositeSpec({
@@ -467,6 +472,10 @@ class Track_datt(IsaacEnv):
         self.stats["linear_jerk_mean"].add_(self.linear_jerk)
         self.stats["angular_jerk_max"].set_(torch.max(self.stats["angular_jerk_max"], torch.abs(self.angular_jerk)))
         self.stats["angular_jerk_mean"].add_(self.angular_jerk)
+        # snap
+        self.linear_snap = torch.abs(self.linear_jerk - self.last_linear_jerk) / self.dt
+        self.stats["linear_snap_max"].set_(torch.max(self.stats["linear_snap_max"], torch.abs(self.linear_snap)))
+        self.stats["linear_snap_mean"].add_(self.linear_snap)
         
         # set last
         self.last_linear_v = self.linear_v.clone()
@@ -530,6 +539,9 @@ class Track_datt(IsaacEnv):
         # reward jerk
         self.reward_jerk_weight = min(self.reward_jerk_weight_init + self.reward_jerk_weight_lr * self.count, self.reward_jerk_max)
         reward_jerk = self.reward_jerk_weight * torch.exp(-self.linear_jerk)
+        # reward snap
+        self.reward_snap_weight = min(self.reward_snap_weight_init + self.reward_snap_weight_lr * self.count, self.reward_snap_max)
+        reward_snap = self.reward_snap_weight * torch.exp(-self.linear_snap)
 
         # spin reward, fixed z
         spin = torch.square(self.drone.vel_b[..., -1])
@@ -542,6 +554,7 @@ class Track_datt(IsaacEnv):
             + reward_action_smoothness
             + reward_acc
             + reward_jerk
+            + reward_snap
         )
         
         self.stats['reward_pos'].add_(reward_pos)
@@ -616,6 +629,12 @@ class Track_datt(IsaacEnv):
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats["angular_a_mean"].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats["linear_jerk_mean"].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats["linear_snap_mean"].div_(
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats["return"] += reward
