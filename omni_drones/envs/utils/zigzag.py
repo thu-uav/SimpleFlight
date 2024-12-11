@@ -186,6 +186,7 @@ if __name__ == "__main__":
     save_to_header('pos_zigzag', pos, 'pos_zigzag.h')
     save_to_header('vel_zigzag', vel, 'vel_zigzag.h')
     import numpy as np
+    breakpoint()
 
     plot_idx = 0
     import matplotlib.pyplot as plt
