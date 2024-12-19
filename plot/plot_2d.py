@@ -7,10 +7,10 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
 matplotlib.rcParams['pdf.fonttype'] = 42
-fig = plt.figure(figsize=(8, 6))
+fig = plt.figure(figsize=(10, 6))
 
 import torch
-name = 'star'
+name = 'zigzag1'
 data = torch.load('/home/jiayu/OmniDrones/plot/trajectory/'+name+'.pt')
 
 x = []
@@ -52,13 +52,13 @@ plt.xticks(fontsize=20)
 plt.yticks(fontsize=20)
 plt.xlabel("y [m]", fontsize=20)
 plt.ylabel("x [m]", fontsize=20)
-plt.gca().set_aspect('equal', adjustable='box')
+# plt.gca().set_aspect('equal', adjustable='box')
 
 # 添加颜色条
 sm = ScalarMappable(cmap=cmap, norm=norm)
 sm.set_array([])
 cbar = plt.colorbar(sm, orientation='vertical')
-cbar.set_label("MSE [m]", fontsize=20)
+cbar.set_label("MED [m]", fontsize=20)
 cbar.ax.tick_params(labelsize=20)  # 将刻度字体大小设置为12
 cbar.ax.yaxis.labelpad = 15  # 增加标签和颜色条的间距（单位是点)
 # cbar.ax.set_aspect('auto')  # 设置颜色条的宽高比为自动调整

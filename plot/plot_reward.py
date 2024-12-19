@@ -33,7 +33,7 @@ plt.fill_between(x3, y3 - y2_std, y3 + y2_std, color='#988ED5', alpha=0.2)
 plt.xticks(x1, fontsize=20)
 plt.yticks(fontsize=20)
 plt.xlabel(r'$\lambda$', fontsize=20)
-plt.ylabel("MSE", fontsize=20)
+plt.ylabel("MED [m]", fontsize=20)
 
 # 添加图例
 plt.legend(fontsize=15)

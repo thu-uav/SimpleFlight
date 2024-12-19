@@ -5,7 +5,8 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: /home/jiayu/OmniDrones/real2sim/air_mixed.pt
+# model_dir: /home/jiayu/OmniDrones/scripts/outputs/datt_mixed_smooth2/11-17_16-42/wandb/run-20241117_164202-u26ll8c3/files/checkpoint_final.pt
+# model_dir: /home/jiayu/OmniDrones/scripts/outputs/ppt/12-15_14-32/wandb/run-20241215_143251-flja4ya8/files/checkpoint_2097676288.pt
 model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
@@ -16,21 +17,22 @@ seed: 0
 
 viewer:
   resolution: [960, 720]
-  # # front
-  # eye: [0., -0.005, 6.]
-  # lookat: [0., 0., 1.]
+  # resolution: [2000, 1500]
+  # front
+  # eye: [0., 2.0, 10.0]
+  # lookat: [0., 0., 1.0]
   eye: [0., 2.0, 2.5]
   lookat: [0., 0., 1.0]
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: best
-  # run_name: debug
+  # run_name: t2w_minus_30
+  run_name: debug
   job_type: train
   entity: chenjy
   project: sim2real
-  # mode: disabled
-  mode: online # set to 'disabled' when debugging locally, online
+  mode: disabled
+  # mode: online # set to 'disabled' when debugging locally, online
   run_id: 
   monitor_gym: True
   tags: 

@@ -381,7 +381,7 @@ class Track_datt(IsaacEnv):
             colors = [(1.0, 1.0, 1.0, 1.0) for _ in range(len(point_list_0))]
             sizes = [1 for _ in range(len(point_list_0))]
             self.draw.draw_lines(point_list_0, point_list_1, colors, sizes)
-            
+
         if self.wind:
             self.wind_i[env_ids] = torch.rand(*env_ids.shape, 1, device=self.device) * (self.wind_intensity_high-self.wind_intensity_low) + self.wind_intensity_low
             self.wind_w[env_ids] = torch.randn(*env_ids.shape, 3, 8, device=self.device)
@@ -661,6 +661,8 @@ class Track_datt(IsaacEnv):
         
         target_pos = []
         for ti in range(t.shape[1]):
+            # breakpoint()
+            # self.ref.pos(t)
             if self.traj_style == 0 or self.traj_style == 1:
                 target_pos.append(self.ref.pos(t[:, ti]))
             else:

@@ -126,6 +126,34 @@ class ChainedPolynomial(BaseTrajectory):
 
         return torch.cat([x, y, z], dim=-1) + self.origin
 
+    # def pos(self, t: torch.Tensor):
+    #     assert t.shape[0] == self.num_trajs  # 确保第一个维度是 self.num_trajs
+
+    #     num_times = t.shape[1]  # 获取时间点的数量
+
+    #     # 计算 idx_x 和 offset
+    #     idx_x = torch.searchsorted(self.T_x, t.view(-1, 1)).view(self.num_trajs, num_times)  # (num_trajs, num_times)
+    #     offset = self.T_x[torch.arange(self.num_trajs, device=self.device)[:, None], idx_x - 1]  # (num_trajs, num_times)
+    #     x = mu.poly(self.x_coeffs[torch.arange(self.num_trajs, device=self.device)[:, None], :, idx_x], 
+    #                 (t - offset)[:, :, None])  # (num_trajs, num_times, 1)
+
+    #     if self.use_y:
+    #         # 计算 idx_y 和 offset
+    #         idx_y = torch.searchsorted(self.T_y, t.view(-1, 1)).view(self.num_trajs, num_times)  # (num_trajs, num_times)
+    #         offset = self.T_y[torch.arange(self.num_trajs, device=self.device)[:, None], idx_y - 1]  # (num_trajs, num_times)
+    #         y = mu.poly(self.y_coeffs[torch.arange(self.num_trajs, device=self.device)[:, None], :, idx_y], 
+    #                     (t - offset)[:, :, None])  # (num_trajs, num_times, 1)
+    #     else:
+    #         y = x * 0.  # (num_trajs, num_times, 1)
+
+    #     z = x * 0.  # (num_trajs, num_times, 1)
+
+    #     # 将 x, y, z 拼接在一起
+    #     result = torch.cat([x, y, z], dim=-1)  # (num_trajs, num_times, 3)
+
+    #     # 加上 origin
+    #     return result + self.origin[..., None, :]  # (num_trajs, num_times, 3)
+
     def vel(self, t: torch.Tensor):
         assert t.shape == (self.num_trajs,)
 
