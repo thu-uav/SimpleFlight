@@ -1,26 +1,3 @@
-# MIT License
-# 
-# Copyright (c) 2023 Botian Xu, Tsinghua University
-# 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-
 from functorch import vmap
 
 import omni.isaac.core.utils.torch as torch_utils
@@ -37,9 +14,11 @@ from torchrl.data import UnboundedContinuousTensorSpec, CompositeSpec
 from omni.isaac.debug_draw import _debug_draw
 
 from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
+from ..utils.chained_polynomial import ChainedPolynomial
+from ..utils.zigzag import RandomZigzag
+from ..utils.pointed_star import NPointedStar
 import collections
 import numpy as np
-from omni_drones.utils.torch import quaternion_to_euler
 
 class Track(IsaacEnv):
     r"""
@@ -98,6 +77,9 @@ class Track(IsaacEnv):
         self.reward_jerk_weight_init = cfg.task.reward_jerk_weight_init
         self.reward_jerk_weight_lr = cfg.task.reward_jerk_weight_lr
         self.reward_jerk_max = cfg.task.reward_jerk_max
+        self.reward_snap_weight_init = cfg.task.reward_snap_weight_init
+        self.reward_snap_weight_lr = cfg.task.reward_snap_weight_lr
+        self.reward_snap_max = cfg.task.reward_snap_max
         # action norm and smoothness
         self.reward_action_smoothness_weight_init = cfg.task.reward_action_smoothness_weight_init
         self.reward_action_smoothness_weight_lr = cfg.task.reward_action_smoothness_weight_lr
@@ -113,18 +95,12 @@ class Track(IsaacEnv):
         self.wind = cfg.task.wind
         self.use_eval = cfg.task.use_eval
         self.num_drones = 1
-        self.use_throttle2critic = cfg.task.use_throttle2critic
+        self.use_rotor2critic = cfg.task.use_rotor2critic
         self.action_history_step = cfg.task.action_history_step
-        self.trajectory_scale = cfg.task.trajectory_scale # 'slow', 'normal', 'fast'
         self.reward_spin_weight = cfg.task.reward_spin_weight
-        self.reward_yaw_weight = cfg.task.reward_yaw_weight
         self.reward_up_weight = cfg.task.reward_up_weight
-        self.use_random_init = cfg.task.use_random_init
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
-        self.use_vel_init = cfg.task.use_vel_init
-        self.use_obs_noise = cfg.task.use_obs_noise
-        self.obs_noise_scale = cfg.task.obs_noise_scale
-        self.use_infessible_done = cfg.task.use_infessible_done
+        self.traj_style = cfg.task.traj_style
         self.sim_data = []
         self.sim_rpy = []
         self.action_data = []
@@ -155,63 +131,75 @@ class Track(IsaacEnv):
             torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
             torch.tensor([0.2, 0.2, 2.], device=self.device) * torch.pi
         )
-        self.traj_rpy_dist = D.Uniform(
-            torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
-            torch.tensor([0., 0., 0.], device=self.device) * torch.pi
-        )
-
-        if self.trajectory_scale == 'slow':
-            self.T_scale_dist = D.Uniform(
-                torch.tensor(14.8, device=self.device),
-                torch.tensor(15.2, device=self.device)
-            )
-        elif self.trajectory_scale == 'normal':
-            self.T_scale_dist = D.Uniform(
-                torch.tensor(5.3, device=self.device),
-                torch.tensor(5.7, device=self.device)
-            )
-        elif self.trajectory_scale == 'fast':
-            self.T_scale_dist = D.Uniform(
-                torch.tensor(3.3, device=self.device),
-                torch.tensor(3.7, device=self.device)
-            )
+            
+        self.origin = torch.tensor([0., 0., 1.], device=self.device)
+        if self.traj_style == 0:
+            self.ref = ChainedPolynomial(num_trajs=self.num_envs,
+                                    scale=2.5,
+                                    use_y=True,
+                                    min_dt=1.5,
+                                    max_dt=4.0,
+                                    degree=5,
+                                    origin=self.origin,
+                                    device=self.device)
+        elif self.traj_style == 1:
+            self.ref = RandomZigzag(num_trajs=self.num_envs,
+                                    max_D=[1.0, 1.0, 0.0],
+                                    min_dt=1.0,
+                                    max_dt=1.5,
+                                    diff_axis=True,
+                                    origin=self.origin,
+                                    device=self.device)
         else:
-            self.T_scale_dist = D.Uniform(
-                torch.tensor(3.3, device=self.device),
-                torch.tensor(15.2, device=self.device)
-            )
-        
+            self.ref = [ChainedPolynomial(num_trajs=self.num_envs,
+                                    scale=2.5,
+                                    use_y=True,
+                                    min_dt=1.5,
+                                    max_dt=4.0,
+                                    degree=5,
+                                    origin=self.origin,
+                                    device=self.device),
+                        RandomZigzag(num_trajs=self.num_envs,
+                                    max_D=[1.0, 1.0, 0.0],
+                                    min_dt=1.0,
+                                    max_dt=1.5,
+                                    diff_axis=True,
+                                    origin=self.origin,
+                                    device=self.device)]
+            self.ref_style_seq = torch.randint(0, 2, (self.num_envs,)).to(self.device)
+
         # eval
         if self.use_eval:
             self.init_rpy_dist = D.Uniform(
                 torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
                 torch.tensor([0., 0., 0.], device=self.device) * torch.pi
             )
-            self.traj_rpy_dist = D.Uniform(
-                torch.tensor([0., 0., 0.], device=self.device) * torch.pi,
-                torch.tensor([0., 0., 0.], device=self.device) * torch.pi
-            )
-            if self.trajectory_scale == 'slow':
-                self.T_scale_dist = D.Uniform(
-                    torch.tensor(15.0, device=self.device),
-                    torch.tensor(15.0, device=self.device)
-                )
-            elif self.trajectory_scale == 'normal':
-                self.T_scale_dist = D.Uniform(
-                    torch.tensor(5.5, device=self.device),
-                    torch.tensor(5.5, device=self.device)
-                )
-            elif self.trajectory_scale == 'fast':
-                self.T_scale_dist = D.Uniform(
-                    torch.tensor(3.5, device=self.device),
-                    torch.tensor(3.5, device=self.device)
-                )
-        
-        self.origin = torch.tensor([0., 0., 1.], device=self.device)
+            if self.traj_style == 0:
+                self.ref = ChainedPolynomial(num_trajs=self.num_envs,
+                                        scale=2.5,
+                                        use_y=True,
+                                        min_dt=1.5,
+                                        max_dt=4.0,
+                                        degree=5,
+                                        origin=self.origin,
+                                        device=self.device)
+            else:
+                self.ref = RandomZigzag(num_trajs=self.num_envs,
+                                    max_D=[1.0, 1.0, 0.0],
+                                    min_dt=1.0,
+                                    max_dt=1.5,
+                                    diff_axis=True,
+                                    origin=self.origin,
+                                    device=self.device)
+            if self.cfg.task.eval_star:
+                self.ref = NPointedStar(num_trajs=self.num_envs,
+                                num_points=5,
+                                origin=self.origin,
+                                speed=1.0,
+                                radius=0.7,
+                                device=self.device)
 
-        self.traj_t0 = torch.ones(self.num_envs, device=self.device)
-        self.T_scale = torch.zeros(self.num_envs, device=self.device)
-        self.traj_rot = torch.zeros(self.num_envs, 4, device=self.device)
+        self.traj_t0 = torch.zeros(self.num_envs, 1, device=self.device)
 
         self.last_linear_v = torch.zeros(self.num_envs, 1, device=self.device)
         self.last_angular_v = torch.zeros(self.num_envs, 1, device=self.device)
@@ -227,6 +215,7 @@ class Track(IsaacEnv):
         self.draw = _debug_draw.acquire_debug_draw_interface()
         
         self.prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
+        # self.prev_prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
         self.count = 0 # episode of RL training
 
     def _design_scene(self):
@@ -244,12 +233,11 @@ class Track(IsaacEnv):
         return ["/World/defaultGroundPlane"]
     
     def _set_specs(self):
-        self.use_obs_norm = self.cfg.task.use_obs_norm
         if self.use_ab_wolrd_pos:
             drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
         else:
             # drone_state_dim = 4 + 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
-            drone_state_dim = 3 + 3 + 3 + 3 # linear vel, heading, lateral, up
+            drone_state_dim = 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         
         self.time_encoding_dim = 4
@@ -258,22 +246,14 @@ class Track(IsaacEnv):
         if self.intrinsics:
             obs_dim += sum(spec.shape[-1] for name, spec in self.drone.info_spec.items())
         
-        if self.use_obs_norm:
-            rpos_scale = [0.1, 0.1, 0.1] * self.future_traj_steps
-            vel_scale = [0.1, 0.1, 0.1]
-            rotation_scale = [1.0] * 9
-            self.obs_norm_scale = torch.tensor(rpos_scale + vel_scale + rotation_scale).to(self.device)
-        
         # action history
         self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
         self.action_history_buffer = collections.deque(maxlen=self.action_history)
+
+        state_dim = obs_dim + 4
         
         if self.action_history > 0:
             obs_dim += self.action_history * 4
-        
-        state_dim = obs_dim + 4
-        if self.use_throttle2critic:
-            state_dim += 4
         
         self.observation_spec = CompositeSpec({
             "agents": {
@@ -302,7 +282,6 @@ class Track(IsaacEnv):
             "return": UnboundedContinuousTensorSpec(1),
             "episode_len": UnboundedContinuousTensorSpec(1),
             "tracking_error": UnboundedContinuousTensorSpec(1),
-            "tracking_error_xy": UnboundedContinuousTensorSpec(1),
             "tracking_error_ema": UnboundedContinuousTensorSpec(1),
             "action_error_order1_mean": UnboundedContinuousTensorSpec(1),
             "action_error_order1_max": UnboundedContinuousTensorSpec(1),
@@ -315,6 +294,9 @@ class Track(IsaacEnv):
             "reward_up": UnboundedContinuousTensorSpec(1),
             "reward_spin": UnboundedContinuousTensorSpec(1),
             "reward_action_smoothness": UnboundedContinuousTensorSpec(1),
+            "reward_action_norm": UnboundedContinuousTensorSpec(1),
+            "reward_acc": UnboundedContinuousTensorSpec(1),
+            "reward_jerk": UnboundedContinuousTensorSpec(1),
             "reward_action_smoothness_scale": UnboundedContinuousTensorSpec(1),
             "reward_action_norm_scale": UnboundedContinuousTensorSpec(1),
             "linear_v_max": UnboundedContinuousTensorSpec(1),
@@ -323,12 +305,14 @@ class Track(IsaacEnv):
             "angular_a_max": UnboundedContinuousTensorSpec(1),
             "linear_jerk_max": UnboundedContinuousTensorSpec(1),
             "angular_jerk_max": UnboundedContinuousTensorSpec(1),
+            "linear_snap_max": UnboundedContinuousTensorSpec(1),
             "linear_v_mean": UnboundedContinuousTensorSpec(1),
             "angular_v_mean": UnboundedContinuousTensorSpec(1),
             "linear_a_mean": UnboundedContinuousTensorSpec(1),
             "angular_a_mean": UnboundedContinuousTensorSpec(1),
             "linear_jerk_mean": UnboundedContinuousTensorSpec(1),
             "angular_jerk_mean": UnboundedContinuousTensorSpec(1),
+            "linear_snap_mean": UnboundedContinuousTensorSpec(1),
             "obs_range": UnboundedContinuousTensorSpec(1),
         }).expand(self.num_envs).to(self.device)
         info_spec = CompositeSpec({
@@ -350,21 +334,19 @@ class Track(IsaacEnv):
         
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
-        self.traj_rot[env_ids] = euler_to_quaternion(self.traj_rpy_dist.sample(env_ids.shape))
-        self.T_scale[env_ids] = self.T_scale_dist.sample(env_ids.shape)
-        if self.use_random_init:
-            self.traj_t0[env_ids] = torch.rand(env_ids.shape).to(self.device) * self.T_scale[env_ids] # 0 ~ T
-        else:
-            self.traj_t0[env_ids] = 0.25 * self.T_scale[env_ids]
-            # self.traj_t0[env_ids] = 0.4 * self.T_scale[env_ids]
+        # reset traj with done flag
+        if self.traj_style == 0 or self.traj_style == 1:
+            self.ref.reset(env_ids)
+        else: # mixed
+            self.ref[0].reset(env_ids)
+            self.ref[1].reset(env_ids)
+            # reset the valid traj style
+            self.ref_style_seq[env_ids] = torch.randint(0, 2, (len(env_ids),)).to(self.device)
 
-        t0 = torch.zeros(len(env_ids), device=self.device)
-        pos, linear_v = lemniscate_v(t0 + self.traj_t0[env_ids], self.T_scale[env_ids])
-        pos = pos + self.origin
+        pos = torch.zeros(len(env_ids), 3, device=self.device)
+        pos = pos + self.origin # init: (0, 0, 1)
         rot = euler_to_quaternion(self.init_rpy_dist.sample(env_ids.shape))
         vel = torch.zeros(len(env_ids), 1, 6, device=self.device)
-        if self.use_vel_init:
-            vel[..., :3] = linear_v.unsqueeze(1)
         self.drone.set_world_poses(
             pos + self.envs_positions[env_ids], rot, env_ids
         )
@@ -399,12 +381,12 @@ class Track(IsaacEnv):
             colors = [(1.0, 1.0, 1.0, 1.0) for _ in range(len(point_list_0))]
             sizes = [1 for _ in range(len(point_list_0))]
             self.draw.draw_lines(point_list_0, point_list_1, colors, sizes)
-            
+
         if self.wind:
             self.wind_i[env_ids] = torch.rand(*env_ids.shape, 1, device=self.device) * (self.wind_intensity_high-self.wind_intensity_low) + self.wind_intensity_low
             self.wind_w[env_ids] = torch.randn(*env_ids.shape, 3, 8, device=self.device)
 
-    def _pre_sim_step(self, tensordict: TensorDictBase):
+    def _pre_sim_step(self, tensordict: TensorDictBase):        
         actions = tensordict[("agents", "action")]
         self.info["prev_action"] = tensordict[("info", "prev_action")]
         self.info["policy_action"] = tensordict[("info", "policy_action")]
@@ -416,9 +398,6 @@ class Track(IsaacEnv):
         self.action_error_order1 = tensordict[("stats", "action_error_order1")].clone()
         self.stats["action_error_order1_mean"].add_(self.action_error_order1.mean(dim=-1).unsqueeze(-1))
         self.stats["action_error_order1_max"].set_(torch.max(self.stats["action_error_order1_max"], self.action_error_order1.mean(dim=-1).unsqueeze(-1)))
-        # self.action_error_order2 = tensordict[("stats", "action_error_order2")].clone()
-        # self.stats["action_error_order2_mean"].add_(self.action_error_order2.mean(dim=-1).unsqueeze(-1))
-        # self.stats["action_error_order2_max"].set_(torch.max(self.stats["action_error_order2_max"], self.action_error_order2.mean(dim=-1).unsqueeze(-1)))
 
         self.effort = self.drone.apply_action(actions)
 
@@ -493,6 +472,10 @@ class Track(IsaacEnv):
         self.stats["linear_jerk_mean"].add_(self.linear_jerk)
         self.stats["angular_jerk_max"].set_(torch.max(self.stats["angular_jerk_max"], torch.abs(self.angular_jerk)))
         self.stats["angular_jerk_mean"].add_(self.angular_jerk)
+        # snap
+        self.linear_snap = torch.abs(self.linear_jerk - self.last_linear_jerk) / self.dt
+        self.stats["linear_snap_max"].set_(torch.max(self.stats["linear_snap_max"], torch.abs(self.linear_snap)))
+        self.stats["linear_snap_mean"].add_(self.linear_snap)
         
         # set last
         self.last_linear_v = self.linear_v.clone()
@@ -504,31 +487,17 @@ class Track(IsaacEnv):
         
         obs = torch.cat(obs, dim=-1)
         
-        if self.use_obs_norm:
-            obs = obs * self.obs_norm_scale.unsqueeze(0).unsqueeze(0).repeat(self.num_envs, 1, 1)
-
+        # add time encoding
+        t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
+        state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
+        
         self.stats["obs_range"].set_(torch.max(torch.abs(obs), dim=-1).values)
-
+        
         # add action history to actor
         if self.action_history > 0:
             self.action_history_buffer.append(self.prev_actions)
             all_action_history = torch.concat(list(self.action_history_buffer), dim=-1)
             obs = torch.cat([obs, all_action_history], dim=-1)
-
-        # state: obs + t + throttle
-        t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
-        state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
-        if self.use_throttle2critic:
-            # add throttle to critic, throttle is the ground truth, w.o. action noise
-            state = torch.concat([state, self.root_state[:, 0, 28:]], dim=-1)
-
-        # state: ground truth, obs: add noise to obs (without action history)
-        if self.use_obs_noise:
-            if self.action_history > 0:
-                obs_noise_dim = obs.shape[-1] - self.action_history * 4
-                obs[..., :obs_noise_dim] *= torch.randn(self.num_envs, 1, obs_noise_dim, device=self.device) * self.obs_noise_scale + 1 # add a gaussian noise of mean 0 and variance self.obs_noise_scale**2
-            else:
-                obs *= torch.randn(obs.shape, device=self.device) * self.obs_noise_scale + 1 # add a gaussian noise of mean 0 and variance self.obs_noise_scale**2
 
         if self.use_eval:
             self.sim_data.append(obs[0].clone())
@@ -546,9 +515,7 @@ class Track(IsaacEnv):
     def _compute_reward_and_done(self):
         # pos reward
         distance = torch.norm(self.rpos[:, [0]], dim=-1)
-        distance_xy = torch.norm(self.rpos[:, [0]][..., :2], dim=-1)
         self.stats["tracking_error"].add_(-distance)
-        self.stats["tracking_error_xy"].add_(-distance_xy)
         self.stats["tracking_error_ema"].lerp_(distance, (1-self.alpha))
         
         reward_pos = self.reward_distance_scale * torch.exp(-distance)
@@ -572,43 +539,45 @@ class Track(IsaacEnv):
         # reward jerk
         self.reward_jerk_weight = min(self.reward_jerk_weight_init + self.reward_jerk_weight_lr * self.count, self.reward_jerk_max)
         reward_jerk = self.reward_jerk_weight * torch.exp(-self.linear_jerk)
+        # reward snap
+        self.reward_snap_weight = min(self.reward_snap_weight_init + self.reward_snap_weight_lr * self.count, self.reward_snap_max)
+        reward_snap = self.reward_snap_weight * torch.exp(-self.linear_snap)
 
         # spin reward, fixed z
         spin = torch.square(self.drone.vel_b[..., -1])
         reward_spin = self.reward_spin_weight * 0.5 / (1.0 + torch.square(spin))
 
-        # yaw reward
-        rpy = quaternion_to_euler(self.drone.rot)
-        reward_yaw = self.reward_yaw_weight * 0.5 / (1.0 + torch.square(rpy[..., -1]))
-
         reward = (
             reward_pos
-            + reward_pos * (reward_up + reward_spin + reward_yaw)
+            + reward_pos * (reward_up + reward_spin)
             + reward_action_norm
             + reward_action_smoothness
             + reward_acc
             + reward_jerk
+            + reward_snap
         )
         
         self.stats['reward_pos'].add_(reward_pos)
         self.stats['reward_action_smoothness'].add_(reward_action_smoothness)
+        self.stats['reward_action_norm'].add_(reward_action_norm)
+        self.stats['reward_acc'].add_(reward_acc)
+        self.stats['reward_jerk'].add_(reward_jerk)
         self.stats['reward_spin'].add_(reward_pos * reward_spin)
         self.stats['reward_up'].add_(reward_pos * reward_up)
         self.stats['reward_action_smoothness_scale'].set_(self.reward_action_smoothness_weight * torch.ones(self.num_envs, 1, device=self.device))
         self.stats['reward_action_norm_scale'].set_(self.reward_action_norm_weight * torch.ones(self.num_envs, 1, device=self.device))
 
-        if self.use_infessible_done:
-            done = (
-                (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
-                | (self.drone.pos[..., 2] < 0.1)
-                | (distance > self.reset_thres)
-            )
-        else:
-            done = (
-                (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
-                | (self.drone.pos[..., 2] < 0.1)
-            )
-        
+        # done = (
+        #     (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
+        #     | (self.drone.pos[..., 2] < 0.1)
+        #     # | (distance > self.reset_thres)
+        # )
+        done = (
+            (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
+            | (self.drone.pos[..., 2] < 0.1)
+            | (distance > self.reset_thres)
+        )
+
         if self.use_eval:
             self.action_data.append(self.prev_actions[0].clone())
             if done[0]:
@@ -618,9 +587,6 @@ class Track(IsaacEnv):
 
         ep_len = self.progress_buf.unsqueeze(-1)
         self.stats["tracking_error"].div_(
-            torch.where(done, ep_len, torch.ones_like(ep_len))
-        )
-        self.stats["tracking_error_xy"].div_(
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats['action_error_order1_mean'].div_(
@@ -644,6 +610,15 @@ class Track(IsaacEnv):
         self.stats['reward_action_smoothness'].div_(
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
+        self.stats['reward_action_norm'].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats['reward_acc'].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats['reward_jerk'].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
         self.stats["linear_v_mean"].div_(
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
@@ -654,6 +629,12 @@ class Track(IsaacEnv):
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats["angular_a_mean"].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats["linear_jerk_mean"].div_(
+            torch.where(done, ep_len, torch.ones_like(ep_len))
+        )
+        self.stats["linear_snap_mean"].div_(
             torch.where(done, ep_len, torch.ones_like(ep_len))
         )
         self.stats["return"] += reward
@@ -673,11 +654,28 @@ class Track(IsaacEnv):
         if env_ids is None:
             env_ids = ...
         # discrete t
-        t = self.progress_buf[env_ids].unsqueeze(1) + step_size * torch.arange(steps, device=self.device)
-        # t: [num_envs, steps], continuous t
-        t = self.traj_t0[env_ids].unsqueeze(1) + t * self.dt
+        t = self.progress_buf.unsqueeze(1) + step_size * torch.arange(steps, device=self.device)
+        # t: [env_ids, steps], continuous t
+        t = self.traj_t0 + t * self.dt
         # target_pos: [num_envs, steps, 3]
-        target_pos, _ = vmap(lemniscate_v)(t, self.T_scale[env_ids].unsqueeze(-1))
+        
+        # target_pos = []
+        # for ti in range(t.shape[1]):
+        #     if self.traj_style == 0 or self.traj_style == 1:
+        #         target_pos.append(self.ref.pos(t[:, ti]))
+        #     else:
+        #         smooth = self.ref[0].pos(t[:, ti])
+        #         zigzag = self.ref[1].pos(t[:, ti])
+        #         all_traj = smooth * (1 - self.ref_style_seq).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1)
+        #         target_pos.append(all_traj)
+        # target_pos = torch.stack(target_pos, dim=1)[env_ids]
+        
+        if self.traj_style == 0 or self.traj_style == 1:
+            target_pos = self.ref.batch_pos(t)
+        else:
+            smooth = self.ref[0].batch_pos(t)
+            zigzag = self.ref[1].batch_pos(t)
+            target_pos = smooth * (1 - self.ref_style_seq).unsqueeze(1).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1).unsqueeze(1)
 
-        return self.origin + target_pos
+        return target_pos
 

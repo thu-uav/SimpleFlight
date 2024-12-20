@@ -42,11 +42,11 @@ Although Isaac Sim comes with a built-in Python environment, we recommend using 
 conda create -n sim python=3.7
 conda activate sim
 
-# at Multi-UAV-pursuit-evasion/
+# at SimpleFlight/
 cp -r conda_setup/etc $CONDA_PREFIX
 # re-activate the environment
 conda activate sim
-# install Multi-UAV-pursuit-evasion
+# install
 pip install -e .
 
 # verification
@@ -62,23 +62,23 @@ We manage these two packages using Git submodules to ensure that the correct ver
 
 Get the submodules:
 ```
-# at Multi-UAV-pursuit-evasion/
+# at SimpleFlight/
 git submodule update --init --recursive
 ```
 Pip install these two packages respectively:
 ```
-# at Multi-UAV-pursuit-evasion/
+# at SimpleFlight/
 cd third_party/tensordict
 pip install -e .
 ```
 ```
-# at Multi-UAV-pursuit-evasion/
+# at SimpleFlight/
 cd third_party/torchrl
 pip install -e .
 ```
 #### 4. Verification
 ```
-# at Multi-UAV-pursuit-evasion/
+# at SimpleFlight/
 cd scripts
 python train.py headless=true wandb.mode=disabled total_frames=50000 task=Hover
 ```
@@ -115,43 +115,28 @@ cfg
 |-- algo
     |-- mappo.yaml
 |-- task
-    |-- HideAndSeek_envgen.yaml
-    |-- HideAndSeek.yaml
+    |-- Track.yaml
     |-- Hover.yaml
 omni_drones
 |-- envs
-    |-- hide_and_seek
-        |-- hideandseek_envgen.py
-        |-- hideandseek.py
     |-- single
         |-- hover.py
+        |-- track.py
 scripts
 |-- train.py
-|-- train.deploy.py
-|-- train_generator.py
 ```
 
 For policy training, 
 ```
-# at Multi-UAV-pursuit-evasion/
+# at SimpleFlight/
 cd scripts
-# Train the pursuit-evasion task with Automatic Environment Generator.
-python train_generator.py
-# Train the pursuit-evasion task without Automatic Environment Generator.
 python train.py
-# In the first stage, we get the best model, checkpoint.pt.
 ```
 
 For policy evaluation,
 ```
-# use_random_cylinder = 0, scenario_flag = 'wall' in HideAndSeek.yaml
-# four evaluation scenarios: 'wall', 'narrow_gap', 'random', 'passage'
 python eval.py
 ```
-
-<div align=center>
-<img src="https://github.com/jiayu-ch15/Multi-UAV-pursuit-evasion/blob/main/figures/evaluation.png" width="700"/>
-</div>
 
 ## Real-world Deployment
 We deploy the policy on three real [CrazyFlie 2.1](https://www.bitcraze.io/products/old-products/crazyflie-2-1/) quadrotors. The key parameters of dynamics model is listed as follow:
@@ -171,26 +156,20 @@ moment_constants: 7.24e-10
 time_constant: 0.025
 ```
 
-We fine-tune the policy with two-stage reward refinement.
-```
-# in train.yaml, setup the path of the best checkpoint obtained in the first stage
-# model_dir: /absolute/path/checkpoint.pt
-python train_deploy.py
-```
 Note that we use Weights & Bias as the defaul visualizattion platform; to use Weights & Bias, please register and login to the platform first.
 
 ## Citation
-please cite [our paper](http://arxiv.org/abs/2409.15866
+please cite [our paper](http://arxiv.org/abs/2412.11764
 ) if you find it useful:
 
 ```
-@misc{chen2024multiuavpursuitevasiononlineplanning,
-      title={Multi-UAV Pursuit-Evasion with Online Planning in Unknown Environments by Deep Reinforcement Learning}, 
-      author={Jiayu Chen and Chao Yu and Guosheng Li and Wenhao Tang and Xinyi Yang and Botian Xu and Huazhong Yang and Yu Wang},
+@misc{chen2024matterslearningzeroshotsimtoreal,
+      title={What Matters in Learning A Zero-Shot Sim-to-Real RL Policy for Quadrotor Control? A Comprehensive Study}, 
+      author={Jiayu Chen and Chao Yu and Yuqing Xie and Feng Gao and Yinuo Chen and Shu'ang Yu and Wenhao Tang and Shilong Ji and Mo Mu and Yi Wu and Huazhong Yang and Yu Wang},
       year={2024},
-      eprint={2409.15866},
+      eprint={2412.11764},
       archivePrefix={arXiv},
       primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2409.15866}, 
+      url={https://arxiv.org/abs/2412.11764}, 
 }
 ```
