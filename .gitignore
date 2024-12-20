@@ -148,7 +148,7 @@ tmp
 test*.ipynb
 
 local_test/
-# *.mp4
+*.mp4
 
 log_files_*
 

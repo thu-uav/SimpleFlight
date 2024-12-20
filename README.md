@@ -9,6 +9,9 @@ Website: https://sites.google.com/view/simpleflight/
 This is the official repository of the paper "What Matters in Learning A Zero-Shot Sim-to-Real RL Policy for Quadrotor Control? A Comprehensive Study ". This repository is heavily based on https://github.com/btx0424/OmniDrones.git.
 
 <div align=center>
+<img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/traj.png" width="700"/>
+</div>
+<div align=center>
 <img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/overview.png" width="700"/>
 </div>
 
@@ -168,12 +171,12 @@ time_constant: 0.025
 
 Note that we use Weights & Bias as the defaul visualizattion platform; to use Weights & Bias, please register and login to the platform first.
 
-<div align=center>
+<!-- <div align=center>
 <img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/figure8.mp4" width="200"/>
 <img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/poly.mp4" width="200"/>
 <img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/pentagram.mp4" width="200"/>
 <img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/zigzag.mp4" width="200"/>
-</div>
+</div> -->
 
 ## Citation
 please cite [our paper](http://arxiv.org/abs/2412.11764
