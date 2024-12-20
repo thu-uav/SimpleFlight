@@ -14,6 +14,9 @@ This is the official repository of the paper "What Matters in Learning A Zero-Sh
 
 Overview of SimpleFlight. We begin with SysID and selective DR for quadrotor dynamics and low-level control. Next, an RL policy is trained in simulation to output CTBR for tracking arbitrary trajectories and zero-shot deployed directly on a real quadrotor. The training framework focuses on three key aspects, i.e., input space design, reward design, and training techniques, identifying five critical factors to enhance zero-shot deployment.
 
+## Usage 
+This repo contains the simulation code for training our tracking policy. For running on the real Crazyflie, see the code here: . Weights of our tracking policy can be found in /SimpleFlight/models/deploy.pt
+
 ## Install
 
 #### 1. Download Isaac Sim (local version)
@@ -104,9 +107,7 @@ and edit ``.vscode/settings.json`` as:
 }
 ```
 
-## Usage
-
-For usage and more details, please refer to the [documentation](https://omnidrones.readthedocs.io/en/latest/).
+## Folder
 
 The code is organized as follow:
 ```
@@ -124,6 +125,7 @@ omni_drones
         |-- track.py
 scripts
 |-- train.py
+|-- eval.py
 ```
 
 For policy training, 
@@ -145,9 +147,8 @@ python eval.py
 For Track, modifying task parameters via Track.yaml
 - `env` `num_envs` : the number of parallel environments
 - `env` `max_episode_length` : the maximum length of an episode
-- `drone_model` : types of drones, "Crazyflie" or 'air'
 - `use_eval`: set True to eliminate the randomness of the environment 
-- `action_transform`: the low-level controller that converts CTBR commands to motor thrusts. "PIDrate" for crazyflie
+- `action_transform`: the low-level controller that converts CTBR commands to motor thrusts. use `PIDrate` for crazyflie
 
 ## Real-world Deployment
 We deploy the policy on three real [CrazyFlie 2.1](https://www.bitcraze.io/products/old-products/crazyflie-2-1/) quadrotors. The key parameters of dynamics model is listed as follow:
@@ -169,9 +170,9 @@ time_constant: 0.025
 
 Note that we use Weights & Bias as the defaul visualizattion platform; to use Weights & Bias, please register and login to the platform first.
 
-<div align=center>
+<!-- <div align=center>
 <img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/demo.png" width="700"/>
-</div>
+</div> -->
 
 ## Citation
 please cite [our paper](http://arxiv.org/abs/2412.11764
