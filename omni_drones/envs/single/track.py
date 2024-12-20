@@ -100,7 +100,7 @@ class Track(IsaacEnv):
         self.reward_spin_weight = cfg.task.reward_spin_weight
         self.reward_up_weight = cfg.task.reward_up_weight
         self.use_ab_wolrd_pos = cfg.task.use_ab_wolrd_pos
-        self.traj_style = cfg.task.traj_style
+        self.eval_traj = cfg.task.eval_traj
         self.sim_data = []
         self.sim_rpy = []
         self.action_data = []
@@ -133,40 +133,22 @@ class Track(IsaacEnv):
         )
             
         self.origin = torch.tensor([0., 0., 1.], device=self.device)
-        if self.traj_style == 0:
-            self.ref = ChainedPolynomial(num_trajs=self.num_envs,
-                                    scale=2.5,
-                                    use_y=True,
-                                    min_dt=1.5,
-                                    max_dt=4.0,
-                                    degree=5,
-                                    origin=self.origin,
-                                    device=self.device)
-        elif self.traj_style == 1:
-            self.ref = RandomZigzag(num_trajs=self.num_envs,
-                                    max_D=[1.0, 1.0, 0.0],
-                                    min_dt=1.0,
-                                    max_dt=1.5,
-                                    diff_axis=True,
-                                    origin=self.origin,
-                                    device=self.device)
-        else:
-            self.ref = [ChainedPolynomial(num_trajs=self.num_envs,
-                                    scale=2.5,
-                                    use_y=True,
-                                    min_dt=1.5,
-                                    max_dt=4.0,
-                                    degree=5,
-                                    origin=self.origin,
-                                    device=self.device),
-                        RandomZigzag(num_trajs=self.num_envs,
-                                    max_D=[1.0, 1.0, 0.0],
-                                    min_dt=1.0,
-                                    max_dt=1.5,
-                                    diff_axis=True,
-                                    origin=self.origin,
-                                    device=self.device)]
-            self.ref_style_seq = torch.randint(0, 2, (self.num_envs,)).to(self.device)
+        self.ref = [ChainedPolynomial(num_trajs=self.num_envs,
+                                scale=2.5,
+                                use_y=True,
+                                min_dt=1.5,
+                                max_dt=4.0,
+                                degree=5,
+                                origin=self.origin,
+                                device=self.device),
+                    RandomZigzag(num_trajs=self.num_envs,
+                                max_D=[1.0, 1.0, 0.0],
+                                min_dt=1.0,
+                                max_dt=1.5,
+                                diff_axis=True,
+                                origin=self.origin,
+                                device=self.device)]
+        self.ref_style_seq = torch.randint(0, 2, (self.num_envs,)).to(self.device)
 
         # eval
         if self.use_eval:
@@ -174,7 +156,7 @@ class Track(IsaacEnv):
                 torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
                 torch.tensor([0., 0., 0.], device=self.device) * torch.pi
             )
-            if self.traj_style == 0:
+            if self.eval_traj == 'poly':
                 self.ref = ChainedPolynomial(num_trajs=self.num_envs,
                                         scale=2.5,
                                         use_y=True,
@@ -183,7 +165,7 @@ class Track(IsaacEnv):
                                         degree=5,
                                         origin=self.origin,
                                         device=self.device)
-            else:
+            elif self.eval_traj == 'zigzag':
                 self.ref = RandomZigzag(num_trajs=self.num_envs,
                                     max_D=[1.0, 1.0, 0.0],
                                     min_dt=1.0,
@@ -191,7 +173,7 @@ class Track(IsaacEnv):
                                     diff_axis=True,
                                     origin=self.origin,
                                     device=self.device)
-            if self.cfg.task.eval_star:
+            elif self.eval_traj == 'pentagram':
                 self.ref = NPointedStar(num_trajs=self.num_envs,
                                 num_points=5,
                                 origin=self.origin,
@@ -335,13 +317,14 @@ class Track(IsaacEnv):
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
         # reset traj with done flag
-        if self.traj_style == 0 or self.traj_style == 1:
-            self.ref.reset(env_ids)
-        else: # mixed
+        if not self.use_eval: # mixed
             self.ref[0].reset(env_ids)
             self.ref[1].reset(env_ids)
             # reset the valid traj style
             self.ref_style_seq[env_ids] = torch.randint(0, 2, (len(env_ids),)).to(self.device)
+
+        if self.use_eval:
+            self.ref.reset(env_ids)
 
         pos = torch.zeros(len(env_ids), 3, device=self.device)
         pos = pos + self.origin # init: (0, 0, 1)
@@ -659,23 +642,14 @@ class Track(IsaacEnv):
         t = self.traj_t0 + t * self.dt
         # target_pos: [num_envs, steps, 3]
         
-        # target_pos = []
-        # for ti in range(t.shape[1]):
-        #     if self.traj_style == 0 or self.traj_style == 1:
-        #         target_pos.append(self.ref.pos(t[:, ti]))
-        #     else:
-        #         smooth = self.ref[0].pos(t[:, ti])
-        #         zigzag = self.ref[1].pos(t[:, ti])
-        #         all_traj = smooth * (1 - self.ref_style_seq).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1)
-        #         target_pos.append(all_traj)
-        # target_pos = torch.stack(target_pos, dim=1)[env_ids]
-        
-        if self.traj_style == 0 or self.traj_style == 1:
-            target_pos = self.ref.batch_pos(t)
-        else:
+        if not self.use_eval:
             smooth = self.ref[0].batch_pos(t)
             zigzag = self.ref[1].batch_pos(t)
             target_pos = smooth * (1 - self.ref_style_seq).unsqueeze(1).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1).unsqueeze(1)
+        else:
+            for ti in range(t.shape[1]):
+                target_pos.append(self.ref.pos(t[:, ti]))
+            target_pos = torch.stack(target_pos, dim=1)[env_ids]
 
         return target_pos
 

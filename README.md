@@ -14,9 +14,6 @@ This is the official repository of the paper "What Matters in Learning A Zero-Sh
 
 Overview of SimpleFlight. We begin with SysID and selective DR for quadrotor dynamics and low-level control. Next, an RL policy is trained in simulation to output CTBR for tracking arbitrary trajectories and zero-shot deployed directly on a real quadrotor. The training framework focuses on three key aspects, i.e., input space design, reward design, and training techniques, identifying five critical factors to enhance zero-shot deployment.
 
-## Usage 
-This repo contains the simulation code for training our tracking policy. For running on the real Crazyflie, see the code here: . Weights of our tracking policy can be found in /SimpleFlight/models/deploy.pt
-
 ## Install
 
 #### 1. Download Isaac Sim (local version)
@@ -107,7 +104,8 @@ and edit ``.vscode/settings.json`` as:
 }
 ```
 
-## Folder
+## Usage 
+This repo contains the simulation code for training our tracking policy. For running on the real Crazyflie, see the code here: . Weights of our tracking policy can be found in ``/SimpleFlight/models/deploy.pt``
 
 The code is organized as follow:
 ```
@@ -170,9 +168,12 @@ time_constant: 0.025
 
 Note that we use Weights & Bias as the defaul visualizattion platform; to use Weights & Bias, please register and login to the platform first.
 
-<!-- <div align=center>
-<img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/demo.png" width="700"/>
-</div> -->
+<div align=center>
+<img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/figure8.mp4" width="200"/>
+<img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/poly.mp4" width="200"/>
+<img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/pentagram.mp4" width="200"/>
+<img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/zigzag.mp4" width="200"/>
+</div>
 
 ## Citation
 please cite [our paper](http://arxiv.org/abs/2412.11764
