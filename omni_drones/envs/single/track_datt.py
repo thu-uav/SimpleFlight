@@ -675,7 +675,7 @@ class Track_datt(IsaacEnv):
         else:
             smooth = self.ref[0].batch_pos(t)
             zigzag = self.ref[1].batch_pos(t)
-            target_pos = smooth * (1 - self.ref_style_seq).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1)
+            target_pos = smooth * (1 - self.ref_style_seq).unsqueeze(1).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1).unsqueeze(1)
 
         return target_pos
 
