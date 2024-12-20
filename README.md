@@ -9,7 +9,7 @@ Website: https://sites.google.com/view/simpleflight/
 This is the official repository of the paper "What Matters in Learning A Zero-Shot Sim-to-Real RL Policy for Quadrotor Control? A Comprehensive Study ". This repository is heavily based on https://github.com/btx0424/OmniDrones.git.
 
 <div align=center>
-<img src="https://github.com/thu-uav/SimpleFlight/tree/main/figures" width="700"/>
+<img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/overview.png" width="700"/>
 </div>
 
 Overview of SimpleFlight. We begin with SysID and selective DR for quadrotor dynamics and low-level control. Next, an RL policy is trained in simulation to output CTBR for tracking arbitrary trajectories and zero-shot deployed directly on a real quadrotor. The training framework focuses on three key aspects, i.e., input space design, reward design, and training techniques, identifying five critical factors to enhance zero-shot deployment.
