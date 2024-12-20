@@ -659,18 +659,23 @@ class Track_datt(IsaacEnv):
         t = self.traj_t0 + t * self.dt
         # target_pos: [num_envs, steps, 3]
         
-        target_pos = []
-        for ti in range(t.shape[1]):
-            # breakpoint()
-            # self.ref.pos(t)
-            if self.traj_style == 0 or self.traj_style == 1:
-                target_pos.append(self.ref.pos(t[:, ti]))
-            else:
-                smooth = self.ref[0].pos(t[:, ti])
-                zigzag = self.ref[1].pos(t[:, ti])
-                all_traj = smooth * (1 - self.ref_style_seq).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1)
-                target_pos.append(all_traj)
-        target_pos = torch.stack(target_pos, dim=1)[env_ids]
+        # target_pos = []
+        # for ti in range(t.shape[1]):
+        #     if self.traj_style == 0 or self.traj_style == 1:
+        #         target_pos.append(self.ref.pos(t[:, ti]))
+        #     else:
+        #         smooth = self.ref[0].pos(t[:, ti])
+        #         zigzag = self.ref[1].pos(t[:, ti])
+        #         all_traj = smooth * (1 - self.ref_style_seq).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1)
+        #         target_pos.append(all_traj)
+        # target_pos = torch.stack(target_pos, dim=1)[env_ids]
+        
+        if self.traj_style == 0 or self.traj_style == 1:
+            target_pos = self.ref.batch_pos(t)
+        else:
+            smooth = self.ref[0].batch_pos()
+            zigzag = self.ref[1].batch_pos()
+            target_pos = smooth * (1 - self.ref_style_seq).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1)
 
         return target_pos
 

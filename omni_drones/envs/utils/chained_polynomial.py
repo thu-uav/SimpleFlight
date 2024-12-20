@@ -110,8 +110,8 @@ class ChainedPolynomial(BaseTrajectory):
 
         idx_x = torch.searchsorted(self.T_x, t[:, None]).squeeze(-1) # (num_trajs,)
         offset = self.T_x[torch.arange(self.num_trajs, device=self.device), idx_x - 1] # (num_trajs,)
-        x = mu.poly(self.x_coeffs[torch.arange(self.num_trajs, device=self.device), :, idx_x], 
-                    (t - offset)[:, None],)
+        x_coeffs = self.x_coeffs[torch.arange(self.num_trajs, device=self.device), :, idx_x]
+        x = mu.poly(x_coeffs, (t - offset)[:, None],)
 
         if self.use_y:
             idx_y = torch.searchsorted(self.T_y, t[:, None]).squeeze(-1)
@@ -123,36 +123,39 @@ class ChainedPolynomial(BaseTrajectory):
 
         z = x * 0.
 
-
         return torch.cat([x, y, z], dim=-1) + self.origin
 
-    # def pos(self, t: torch.Tensor):
-    #     assert t.shape[0] == self.num_trajs  # 确保第一个维度是 self.num_trajs
+    # implement the parallel version for trajectory generation
+    def batch_pos(self, t: torch.Tensor):
+        assert t.ndim == 2 and t.shape[0] == self.num_trajs, "t: [num_trajs, num_time_points]"
 
-    #     num_times = t.shape[1]  # 获取时间点的数量
+        batch_size, num_t = t.shape
+        
+        idx_x = torch.searchsorted(self.T_x, t).squeeze(-1)
+        
+        offset = self.T_x.gather(1, (idx_x - 1) % self.T_x.shape[1])
 
-    #     # 计算 idx_x 和 offset
-    #     idx_x = torch.searchsorted(self.T_x, t.view(-1, 1)).view(self.num_trajs, num_times)  # (num_trajs, num_times)
-    #     offset = self.T_x[torch.arange(self.num_trajs, device=self.device)[:, None], idx_x - 1]  # (num_trajs, num_times)
-    #     x = mu.poly(self.x_coeffs[torch.arange(self.num_trajs, device=self.device)[:, None], :, idx_x], 
-    #                 (t - offset)[:, :, None])  # (num_trajs, num_times, 1)
+        # expand idx_x
+        idx_x_expanded = idx_x.unsqueeze(1).expand(-1, self.x_coeffs.shape[1], -1)
+        # self.x_coeffs: [num_traj, degree + 1, 100], 
+        # idx_x_expanded: [num_traj, degree + 1, num_timepoints], 
+        # x_coeffs: [num_traj, degree + 1, num_timepoints] + transpose
+        x_coeffs = self.x_coeffs.gather(2, idx_x_expanded).transpose(1, 2)
+        x = mu.poly(x_coeffs.reshape(-1, self.degree + 1), (t - offset).reshape(-1, 1),).reshape(self.num_trajs, -1, 1)
 
-    #     if self.use_y:
-    #         # 计算 idx_y 和 offset
-    #         idx_y = torch.searchsorted(self.T_y, t.view(-1, 1)).view(self.num_trajs, num_times)  # (num_trajs, num_times)
-    #         offset = self.T_y[torch.arange(self.num_trajs, device=self.device)[:, None], idx_y - 1]  # (num_trajs, num_times)
-    #         y = mu.poly(self.y_coeffs[torch.arange(self.num_trajs, device=self.device)[:, None], :, idx_y], 
-    #                     (t - offset)[:, :, None])  # (num_trajs, num_times, 1)
-    #     else:
-    #         y = x * 0.  # (num_trajs, num_times, 1)
+        if self.use_y:
+            idx_y = torch.searchsorted(self.T_y, t).squeeze(-1)
+            offset = self.T_y.gather(1, (idx_y - 1) % self.T_y.shape[1])
+            # expand idx_y
+            idx_y_expanded = idx_y.unsqueeze(1).expand(-1, self.y_coeffs.shape[1], -1)
+            y_coeffs = self.y_coeffs.gather(2, idx_y_expanded).transpose(1, 2)
+            y = mu.poly(y_coeffs.reshape(-1, self.degree + 1), (t - offset).reshape(-1, 1),).reshape(self.num_trajs, -1, 1)
+        else:
+            y = x * 0.
 
-    #     z = x * 0.  # (num_trajs, num_times, 1)
-
-    #     # 将 x, y, z 拼接在一起
-    #     result = torch.cat([x, y, z], dim=-1)  # (num_trajs, num_times, 3)
-
-    #     # 加上 origin
-    #     return result + self.origin[..., None, :]  # (num_trajs, num_times, 3)
+        z = x * 0.
+        
+        return torch.cat([x, y, z], dim=-1) + self.origin # [num_traj, num_timepoints, 3]
 
     def vel(self, t: torch.Tensor):
         assert t.shape == (self.num_trajs,)
@@ -244,7 +247,7 @@ class ChainedPolynomial(BaseTrajectory):
     
 
 if __name__ == "__main__":
-    num_traj = 5
+    num_traj = 2000
     # scale = 1.5, dt: 1.5~4.0 -> v_max = 1.74
     # scale = 2.0, dt: 1.5~4.0 -> v_max = 2.31
     # scale = 2.5, dt: 1.5~4.0 -> v_max = 2.9
@@ -252,46 +255,48 @@ if __name__ == "__main__":
 
     t = torch.stack([torch.arange(0, 10, 0.004) for _ in range(num_traj)], dim=0)
 
-    pos = []
+    pos = ref.batch_pos(t).cpu().numpy()  # [num_trajs, num_time_points, 3]
+
+    # pos = []
     vel = []
-    acc = []
-    jerk = []
-    snap = []
+    # acc = []
+    # jerk = []
+    # snap = []
     for ti in range(t.shape[1]):
-        pos.append(ref.pos(t[:, ti]))
+    #     pos.append(ref.pos(t[:, ti]))
         vel.append(ref.vel(t[:, ti]))
-        acc.append(ref.acc(t[:, ti]))
-        jerk.append(ref.jerk(t[:, ti]))
-        snap.append(ref.snap(t[:, ti]))
+    #     acc.append(ref.acc(t[:, ti]))
+    #     jerk.append(ref.jerk(t[:, ti]))
+    #     snap.append(ref.snap(t[:, ti]))
 
-    pos = torch.stack(pos, dim=1).cpu().numpy()
+    # pos = torch.stack(pos, dim=1).cpu().numpy()
     vel = torch.stack(vel, dim=1).cpu().numpy()
-    acc = torch.stack(acc, dim=1).cpu().numpy()
-    jerk = torch.stack(jerk, dim=1).cpu().numpy()
-    snap = torch.stack(snap, dim=1).cpu().numpy()
+    # acc = torch.stack(acc, dim=1).cpu().numpy()
+    # jerk = torch.stack(jerk, dim=1).cpu().numpy()
+    # snap = torch.stack(snap, dim=1).cpu().numpy()
     import numpy as np
-    def save_to_header(variable_name, data, filename):
-        with open(filename, 'w') as f:
-            f.write(f'static const float {variable_name}[{data.shape[0]}][{data.shape[1]}][{data.shape[2]}] = {{\n')
-            for i in range(data.shape[0]):
-                f.write('  {\n')
-                for j in range(data.shape[1]):
-                    values = ', '.join(f'{value}f' for value in data[i][j])
-                    f.write(f'    {{{values}}}')
-                    if j < data.shape[1] - 1:
-                        f.write(',\n')
-                    else:
-                        f.write('\n')
-                f.write('  }')
-                if i < data.shape[0] - 1:
-                    f.write(',\n')
-                else:
-                    f.write('\n')
-            f.write('};\n')
-
-    save_to_header('pos_smooth', pos, 'pos_smooth.h')
-    save_to_header('vel_smooth', vel, 'vel_smooth.h')
     breakpoint()
+    # def save_to_header(variable_name, data, filename):
+    #     with open(filename, 'w') as f:
+    #         f.write(f'static const float {variable_name}[{data.shape[0]}][{data.shape[1]}][{data.shape[2]}] = {{\n')
+    #         for i in range(data.shape[0]):
+    #             f.write('  {\n')
+    #             for j in range(data.shape[1]):
+    #                 values = ', '.join(f'{value}f' for value in data[i][j])
+    #                 f.write(f'    {{{values}}}')
+    #                 if j < data.shape[1] - 1:
+    #                     f.write(',\n')
+    #                 else:
+    #                     f.write('\n')
+    #             f.write('  }')
+    #             if i < data.shape[0] - 1:
+    #                 f.write(',\n')
+    #             else:
+    #                 f.write('\n')
+    #         f.write('};\n')
+
+    # save_to_header('pos_smooth', pos, 'pos_smooth.h')
+    # save_to_header('vel_smooth', vel, 'vel_smooth.h')
 
     plot_idx = 1
     import matplotlib.pyplot as plt
@@ -306,6 +311,7 @@ if __name__ == "__main__":
     ax.set_ylabel('y')
     ax.set_zlabel('z')
     plt.savefig(f'chainedpoly-{datetime}.png')
+    breakpoint()
 
     fig, axs = plt.subplots(3, 5, figsize=(50, 10))
     for i in range(3):

@@ -96,6 +96,25 @@ class RandomZigzag(BaseTrajectory):
         else:
             return left_points + (t - t_left) * (right_points - left_points) / (t_right - t_left)
 
+    def batch_calc_axis_i(self, t: torch.Tensor, axis_idx: int):
+        idx = torch.searchsorted(self.T[..., axis_idx].contiguous(), t.contiguous()) # (num_trajs, num_timepoints)
+
+        zero = idx == 0
+        
+        try:
+            left_points = self.points[..., axis_idx].gather(1, (idx - 1) % self.points.shape[1])
+            right_points = self.points[..., axis_idx].gather(1, idx)
+        except:
+            import pdb; pdb.set_trace()
+
+        t_left = self.T[..., axis_idx].gather(1, (idx - 1) % self.points.shape[1])
+        t_right = self.T[..., axis_idx].gather(1, idx)
+
+        left_points[zero] = 0.
+        t_left[zero] = 0.
+
+        return left_points + (t - t_left) * (right_points - left_points) / (t_right - t_left)
+
     def pos(self, t: Union[float, torch.Tensor]):
         assert t.shape == (self.num_trajs,), "t.shape: {}, num_trajs: {}".format(t.shape, self.num_trajs)
 
@@ -121,7 +140,17 @@ class RandomZigzag(BaseTrajectory):
         t_left[zero] = 0.
 
         return left_points + (t[..., None] - t_left) * (right_points - left_points) / (t_right - t_left) + self.origin
+    
+    # only diff_axis = True
+    def batch_pos(self, t: Union[float, torch.Tensor]):
+        assert t.ndim == 2 and t.shape[0] == self.num_trajs, "t: [num_trajs, num_time_points]"
+        t = t.contiguous()
 
+        x = self.batch_calc_axis_i(t, 0)
+        y = self.batch_calc_axis_i(t, 1)
+        z = self.batch_calc_axis_i(t, 2)
+        return torch.stack((x, y, z), dim=-1) + self.origin # (num_trajs, num_timepoints, 3)
+        
     def vel(self, t: Union[float, torch.Tensor]):
         assert t.shape == (self.num_trajs,), "t.shape: {}, num_trajs: {}".format(t.shape, self.num_trajs)
 
@@ -150,11 +179,13 @@ class RandomZigzag(BaseTrajectory):
 
 
 if __name__ == "__main__":
-    num_traj = 5
+    num_traj = 500
     # dt: 1.0~1.5 -> v_max = 1.98
     ref = RandomZigzag(num_traj, max_D=[1., 1., 0.0], min_dt=1.0, max_dt=1.5, diff_axis=True)
 
     t = torch.stack([torch.arange(0, 10, 0.001) for _ in range(num_traj)], dim=0)
+    
+    batch_pos = ref.batch_pos(t)
 
     pos = []
     vel = []
