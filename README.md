@@ -1,16 +1,20 @@
 # What Matters in Learning A Zero-Shot Sim-to-Real RL Policy for Quadrotor Control? A Comprehensive Study 
 
+<div align="center">
+
+[[Website]](https://sites.google.com/view/simpleflight/)
+[[arXiv]](http://arxiv.org/abs/2412.11764)
+[[Firmware Code]]()
+
+![](figures/traj.png)
+</div>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Jiayu Chen, Chao Yu, Yuqing Xie, Feng Gao, Yinuo Chen, Shu’ang Yu, Wenhao Tang, Shilong Ji, Mo Mu, Yi Wu, Huazhong Yang, Yu Wang
 
-Website: https://sites.google.com/view/simpleflight/
-
 This is the official repository of the paper "What Matters in Learning A Zero-Shot Sim-to-Real RL Policy for Quadrotor Control? A Comprehensive Study ". This repository is heavily based on https://github.com/btx0424/OmniDrones.git.
 
-<div align=center>
-<img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/traj.png" width="700"/>
-</div>
 <div align=center>
 <img src="https://github.com/thu-uav/SimpleFlight/blob/main/figures/overview.png" width="700"/>
 </div>
