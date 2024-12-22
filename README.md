@@ -152,7 +152,8 @@ python eval.py
 For Track, modifying task parameters via Track.yaml
 - `env` `num_envs` : the number of parallel environments
 - `env` `max_episode_length` : the maximum length of an episode
-- `use_eval`: set True to eliminate the randomness of the environment 
+- `use_eval`: set True to eliminate the randomness of the environment  for evaluation
+- `eval_traj`: types of evaluation trajectories 
 - `action_transform`: the low-level controller that converts CTBR commands to motor thrusts. use `PIDrate` for crazyflie
 
 ## Real-world Deployment
