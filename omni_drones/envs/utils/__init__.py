@@ -35,6 +35,7 @@ from .chained_polynomial import ChainedPolynomial
 from .pointed_star import NPointedStar
 from .polynomial import Polynomial
 from .zigzag import RandomZigzag
+from .lemniscate import Lemniscate
 # import math_utils as mu
 
 def create_obstacle(

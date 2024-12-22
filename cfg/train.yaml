@@ -5,8 +5,7 @@ headless: true
 sim: ${task.sim}
 env: ${task.env}
 
-# model_dir: null
-model_dir: /home/jiayu/SimpleFlight/models/deploy.pt
+model_dir: null
 
 total_frames: 9000_000_000 #1000_000_000
 max_iters: -1
@@ -24,7 +23,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: deploy
+  run_name: debug
   job_type: train
   entity: chenjy
   project: sim2real

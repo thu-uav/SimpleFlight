@@ -6,7 +6,7 @@ defaults:
   - /base/sim_base@_here_
 
 env:
-  num_envs: 10
+  num_envs: 8192
   max_episode_length: 1000
 
 drone_model: Crazyflie # air
@@ -21,8 +21,8 @@ random_latency: true
 reset_thres: 1.
 future_traj_steps: 10
 
-use_eval: 1
-eval_style: 'poly' # poly, zigzag, pentagram
+use_eval: 0
+eval_traj: 'normal' # poly, zigzag, pentagram, slow, normal, fast
 use_rotor2critic: 0 # need to set critic_input = 'state'
 use_action_history: false
 action_history_step: 5

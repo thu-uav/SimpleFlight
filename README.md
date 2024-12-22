@@ -156,7 +156,7 @@ For Track, modifying task parameters via Track.yaml
 - `action_transform`: the low-level controller that converts CTBR commands to motor thrusts. use `PIDrate` for crazyflie
 
 ## Real-world Deployment
-We deploy the policy on three real [CrazyFlie 2.1](https://www.bitcraze.io/products/old-products/crazyflie-2-1/) quadrotors. The key parameters of dynamics model is listed as follow:
+We deploy the policy on real [CrazyFlie 2.1](https://www.bitcraze.io/products/old-products/crazyflie-2-1/) quadrotors. The key parameters of dynamics model is listed as follow:
 ```
 # in crazyflie.yaml
 mass: 0.0321

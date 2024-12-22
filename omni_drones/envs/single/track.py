@@ -17,58 +17,11 @@ from ..utils import lemniscate, lemniscate_v, pentagram, scale_time
 from ..utils.chained_polynomial import ChainedPolynomial
 from ..utils.zigzag import RandomZigzag
 from ..utils.pointed_star import NPointedStar
+from ..utils.lemniscate import Lemniscate
 import collections
 import numpy as np
 
 class Track(IsaacEnv):
-    r"""
-    A basic control task. The goal for the agent is to track a reference 
-    lemniscate trajectory in the 3D space.
-
-    ## Observation
-    
-    - `rpos` (3 * `future_traj_steps`): The relative position of the drone to the 
-      reference positions in the future `future_traj_steps` time steps.
-    - `root_state` (16 + `num_rotors`): The basic information of the drone (except its position), 
-      containing its rotation (in quaternion), velocities (linear and angular), 
-      heading and up vectors, and the current throttle.
-    - `time_encoding` (optional): The time encoding, which is a 4-dimensional
-      vector encoding the current progress of the episode.
-
-    ## Reward
-
-    - `pos`: Reward for tracking the trajectory, computed from the position
-      error as {math}`\exp(-a * \text{pos_error})`.
-    - `up`: Reward computed from the uprightness of the drone to discourage
-      large tilting.
-    - `spin`: Reward computed from the spin of the drone to discourage spinning.
-    - `effort`: Reward computed from the effort of the drone to optimize the
-      energy consumption.
-    - `action_smoothness`: Reward that encourages smoother drone actions, computed based on the throttle difference of the drone.
-
-    The total reward is computed as follows:
-    ```{math}
-        r = r_\text{pos} + r_\text{pos} * (r_\text{up} + r_\text{heading}) + r_\text{effort} + r_\text{action_smoothness}
-    ```
-
-    ## Episode End
-
-    The episode ends when the tracking error is larger than `reset_thres`, or
-    when the drone is too close to the ground, or when the episode reaches 
-    the maximum length.
-
-    ## Config
-
-    | Parameter               | Type  | Default       | Description |
-    |-------------------------|-------|---------------|-------------|
-    | `drone_model`           | str   | "hummingbird" | Specifies the model of the drone being used in the environment. |
-    | `reset_thres`           | float | 0.5           | Threshold for the distance between the drone and its target, upon exceeding which the episode will be reset. |
-    | `future_traj_steps`     | int   | 4             | Number of future trajectory steps the drone needs to predict. |
-    | `reward_distance_scale` | float | 1.2           | Scales the reward based on the distance between the drone and its target. |
-    | `time_encoding`         | bool  | True          | Indicates whether to include time encoding in the observation space. If set to True, a 4-dimensional vector encoding the current progress of the episode is included in the observation. If set to False, this feature is not included. |
-
-
-    """
     def __init__(self, cfg, headless):
         self.reset_thres = cfg.task.reset_thres
         self.reward_acc_weight_init = cfg.task.reward_acc_weight_init
@@ -149,6 +102,7 @@ class Track(IsaacEnv):
                                 origin=self.origin,
                                 device=self.device)]
         self.ref_style_seq = torch.randint(0, 2, (self.num_envs,)).to(self.device)
+        self.traj_t0 = torch.zeros(self.num_envs, 1, device=self.device)
 
         # eval
         if self.use_eval:
@@ -180,8 +134,15 @@ class Track(IsaacEnv):
                                 speed=1.0,
                                 radius=0.7,
                                 device=self.device)
-
-        self.traj_t0 = torch.zeros(self.num_envs, 1, device=self.device)
+            elif self.eval_traj == 'slow':
+                self.ref = Lemniscate(T=15.0, origin=self.origin, device=self.device)
+                self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 15.0 / 4
+            elif self.eval_traj == 'normal':
+                self.ref = Lemniscate(T=5.5, origin=self.origin, device=self.device)
+                self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 5.5 / 4
+            elif self.eval_traj == 'fast':
+                self.ref = Lemniscate(T=3.5, origin=self.origin, device=self.device)
+                self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 3.5 / 4
 
         self.last_linear_v = torch.zeros(self.num_envs, 1, device=self.device)
         self.last_angular_v = torch.zeros(self.num_envs, 1, device=self.device)
@@ -647,6 +608,7 @@ class Track(IsaacEnv):
             zigzag = self.ref[1].batch_pos(t)
             target_pos = smooth * (1 - self.ref_style_seq).unsqueeze(1).unsqueeze(1) + zigzag * self.ref_style_seq.unsqueeze(1).unsqueeze(1)
         else:
+            target_pos = []
             for ti in range(t.shape[1]):
                 target_pos.append(self.ref.pos(t[:, ti]))
             target_pos = torch.stack(target_pos, dim=1)[env_ids]
