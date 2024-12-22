@@ -4,7 +4,7 @@
 
 [[Website]](https://sites.google.com/view/simpleflight/)
 [[arXiv]](http://arxiv.org/abs/2412.11764)
-[[Firmware Code]]()
+[[Firmware Code]](https://github.com/thu-uav/crazyswarm2.git)
 
 ![](figures/traj.png)
 </div>
@@ -43,7 +43,7 @@ source ~/.bashrc
 
 #### 2. Conda
 
-Although Isaac Sim comes with a built-in Python environment, we recommend using a seperate conda environment which is more flexible. We provide scripts to automate environment setup when activating/deactivating a conda environment at ``Multi-UAV-pursuit-evasion/conda_setup``.
+Although Isaac Sim comes with a built-in Python environment, we recommend using a seperate conda environment which is more flexible. We provide scripts to automate environment setup when activating/deactivating a conda environment at ``SimpleFlight/conda_setup``.
 
 ```
 conda create -n sim python=3.7
@@ -63,7 +63,7 @@ python -c "import torch; print(torch.__path__)"
 ```
 
 #### 3. Third Party Packages
-Multi-UAV-pursuit-evasion requires specific versions of the `tensordict` and `torchrl` packages. For the ``deploy`` branch, it supports `tensordict` version 0.1.2+5e6205c and `torchrl` version 0.1.1+e39e701. 
+SimpleFlight requires specific versions of the `tensordict` and `torchrl` packages. For the ``deploy`` branch, it supports `tensordict` version 0.1.2+5e6205c and `torchrl` version 0.1.1+e39e701. 
 
 We manage these two packages using Git submodules to ensure that the correct versions are used. To initialize and update the submodules, follow these steps:
 
@@ -112,7 +112,7 @@ and edit ``.vscode/settings.json`` as:
 ```
 
 ## Usage 
-This repo contains the simulation code for training our tracking policy. For running on the real Crazyflie, see the code here: . Weights of our tracking policy can be found in ``/SimpleFlight/models/deploy.pt``
+This repo contains the simulation code for training our tracking policy. For running on the real Crazyflie, see the code here: https://github.com/thu-uav/crazyswarm2.git. Weights of our tracking policy can be found in ``/SimpleFlight/models/deploy.pt``
 
 The code is organized as follow:
 ```
