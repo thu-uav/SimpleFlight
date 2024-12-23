@@ -4,7 +4,7 @@
 
 [[Website]](https://sites.google.com/view/simpleflight/)
 [[arXiv]](http://arxiv.org/abs/2412.11764)
-[[Firmware Code]](https://github.com/thu-uav/crazyswarm2.git)
+[[Firmware Code]](https://github.com/thu-uav/crazyswarm_SimpleFlight)
 
 ![](figures/traj.png)
 </div>
@@ -112,7 +112,7 @@ and edit ``.vscode/settings.json`` as:
 ```
 
 ## Usage 
-This repo contains the simulation code for training our tracking policy. For running on the real Crazyflie, see the code here: https://github.com/thu-uav/crazyswarm2.git. Weights of our tracking policy can be found in ``/SimpleFlight/models/deploy.pt``
+This repo contains the simulation code for training our tracking policy. For running on the real Crazyflie, see the code here: https://github.com/thu-uav/crazyswarm_SimpleFlight. Weights of our tracking policy can be found in ``/SimpleFlight/models/deploy.pt``
 
 The code is organized as follow:
 ```
