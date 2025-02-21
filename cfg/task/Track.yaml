@@ -6,7 +6,7 @@ defaults:
   - /base/sim_base@_here_
 
 env:
-  num_envs: 10
+  num_envs: 8192
   max_episode_length: 1000
 
 drone_model: Crazyflie # air
