@@ -381,7 +381,7 @@ class Hover(IsaacEnv):
 
         # relative position and heading
         self.rpos = self.target_pos - self.root_state[..., :3]
-        self.rheading = self.target_heading - self.root_state[..., 13:16]
+        self.rheading = self.target_heading - self.root_state[..., 19:22]
         
         # (relative) position, quat, linear velocity, body rate, heading, lateral, up
         # obs = [self.rpos, self.root_state[..., 3:10], self.root_state[..., 16:19], self.root_state[..., 19:28],]
