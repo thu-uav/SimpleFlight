@@ -51,6 +51,7 @@ def create_ground_plane(
     # Retrieve path to the plane
     if "usd_path" in kwargs:
         usd_path = kwargs["usd_path"]
+        print("Local USD path:", usd_path)
     else:
         # get path to the nucleus server
         assets_root_path = nucleus_utils.get_assets_root_path()

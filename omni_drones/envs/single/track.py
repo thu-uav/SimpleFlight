@@ -6,6 +6,7 @@ from omni_drones.utils.torch import euler_to_quaternion
 import omni.isaac.core.utils.prims as prim_utils
 import torch
 import torch.distributions as D
+import os
 
 from omni_drones.envs.isaac_env import AgentSpec, IsaacEnv
 from omni_drones.robots.drone import MultirotorBase
@@ -166,12 +167,24 @@ class Track(IsaacEnv):
         cfg = drone_model.cfg_cls(force_sensor=self.cfg.task.force_sensor)
         self.drone: MultirotorBase = drone_model(cfg=cfg)
 
-        kit_utils.create_ground_plane(
-            "/World/defaultGroundPlane",
-            static_friction=1.0,
-            dynamic_friction=1.0,
-            restitution=0.0,
-        )
+        if self.use_local_usd:
+            # use local usd resources
+            usd_path = os.path.join(os.path.dirname(__file__), os.pardir, "assets", "default_environment.usd")
+            kit_utils.create_ground_plane(
+                "/World/defaultGroundPlane",
+                static_friction=1.0,
+                dynamic_friction=1.0,
+                restitution=0.0,
+                usd_path=usd_path
+            )
+        else:
+            # use online usd resources
+            kit_utils.create_ground_plane(
+                "/World/defaultGroundPlane",
+                static_friction=1.0,
+                dynamic_friction=1.0,
+                restitution=0.0,
+            )
         self.drone.spawn(translations=[(0.0, 0.0, 1.5)])
         return ["/World/defaultGroundPlane"]
     

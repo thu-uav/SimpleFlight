@@ -63,6 +63,7 @@ class IsaacEnv(EnvBase):
         self.num_envs = self.cfg.env.num_envs
         self.max_episode_length = self.cfg.env.max_episode_length
         self.substeps = self.cfg.sim.substeps
+        self.use_local_usd = self.cfg.use_local_usd
 
         torch.backends.cudnn.benchmark = True
         torch.backends.cudnn.deterministic = False
