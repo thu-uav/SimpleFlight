@@ -77,13 +77,13 @@ Pip install these two packages respectively:
 # at SimpleFlight/
 cd third_party/tensordict
 git checkout 5e6205c
-pip install -e .
+pip install -e . --no-build-isolation
 ```
 ```
 # at SimpleFlight/
 cd third_party/torchrl
 git checkout e39e701
-pip install -e .
+pip install -e . --no-build-isolation
 ```
 #### 4. Verification
 ```
