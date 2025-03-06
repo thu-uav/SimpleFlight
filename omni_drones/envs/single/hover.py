@@ -115,8 +115,6 @@ class Hover(IsaacEnv):
         self.target_vis.initialize()
         self.init_poses = self.drone.get_world_poses(clone=True)
         self.init_vels = torch.zeros_like(self.drone.get_velocities())
-        self.use_rotor2critic = cfg.task.use_rotor2critic
-        self.action_history_step = cfg.task.action_history_step
 
         self.init_pos_dist = D.Uniform(
             torch.tensor([-1., -1., 0.05], device=self.device),
@@ -205,29 +203,12 @@ class Hover(IsaacEnv):
 
     def _set_specs(self):
         # drone_state_dim = self.drone.state_spec.shape[-1]
-        observation_dim = 19 # rpos, quat, linear v, heading, lateral, up
-
-        if self.cfg.task.omega:
-            observation_dim += 3
-
-        if self.cfg.task.motor:
-            observation_dim += self.drone.num_rotors
-
+        observation_dim = 15
+        self.time_encoding_dim = 4
         if self.cfg.task.time_encoding:
-            self.time_encoding_dim = 4
             observation_dim += self.time_encoding_dim
 
-        # action history
-        self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
-        self.action_history_buffer = collections.deque(maxlen=self.action_history)
-
         state_dim = observation_dim + 4
-        
-        if self.action_history > 0:
-            observation_dim += self.action_history * 4
-
-        self.latency = 2 if self.cfg.task.latency else 0
-        self.obs_buffer = collections.deque(maxlen=self.latency)
 
         self.observation_spec = CompositeSpec({
             "agents": CompositeSpec({
@@ -341,10 +322,6 @@ class Hover(IsaacEnv):
         self.info['prev_action'][env_ids, :, 3] = cmd_init.mean(dim=-1)
         self.prev_actions[env_ids] = self.info['prev_action'][env_ids].clone()
 
-        # add init_action to self.action_history_buffer
-        for _ in range(self.action_history):
-            self.action_history_buffer.append(self.prev_actions) # add all prev_actions, not len(env_ids)
-
         self.linear_v_episode = torch.zeros_like(self.stats["linear_v_mean"])
         self.angular_v_episode = torch.zeros_like(self.stats["angular_v_mean"])
         self.linear_a_episode = torch.zeros_like(self.stats["linear_a_mean"])
@@ -383,25 +360,18 @@ class Hover(IsaacEnv):
         self.rpos = self.target_pos - self.root_state[..., :3]
         self.rheading = self.target_heading - self.root_state[..., 19:22]
         
-        # (relative) position, quat, linear velocity, body rate, heading, lateral, up
-        # obs = [self.rpos, self.root_state[..., 3:10], self.root_state[..., 16:19], self.root_state[..., 19:28],]
-        obs = [self.rpos, self.root_state[..., 3:10], self.root_state[..., 19:28],]
+        obs = [
+            self.rpos.flatten(1).unsqueeze(1),
+            # self.root_state[..., 3:7], # quat
+            self.root_state[..., 7:10], # linear v
+            self.root_state[..., 19:28], # rotation
+        ]
 
-        # obs = [
-        #     self.rpos,
-        #     self.root_state[..., 7:10],
-        #     self.root_state[..., 16:19], self.root_state[..., 19:28], 
-        #     # (relative) position, linear velocity, body rate, heading, lateral, up
-        # ]        
+        obs = torch.cat(obs, dim=-1)
 
-        if self.cfg.task.omega:
-            obs.append(self.root_state[..., 10:13])
-        if self.cfg.task.motor:
-            obs.append(self.root_state[..., 19:])
-        if self.time_encoding:
-            t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
-            # t = torch.zeros_like(self.progress_buf).unsqueeze(-1)
-            obs.append(t.expand(-1, self.time_encoding_dim).unsqueeze(1))
+        # add time encoding
+        t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
+        state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
         
         # linear_v, angular_v
         self.linear_v = torch.norm(self.root_state[..., 7:10], dim=-1)
@@ -438,32 +408,11 @@ class Hover(IsaacEnv):
         self.last_angular_a = self.angular_a.clone()
         self.last_linear_jerk = self.linear_jerk.clone()
         self.last_angular_jerk = self.angular_jerk.clone()
-        
-        obs = torch.cat(obs, dim=-1)
-
-        # add throttle to critic
-        if self.use_rotor2critic:
-            state = torch.concat([obs, self.drone.throttle], dim=-1).squeeze(1)
-        else:
-            state = obs.squeeze(1)
-        # add action history to actor
-        if self.action_history > 0:
-            self.action_history_buffer.append(self.prev_actions)
-            all_action_history = torch.concat(list(self.action_history_buffer), dim=-1)
-            obs = torch.cat([obs, all_action_history], dim=-1)
-
-        if self.cfg.task.add_noise:
-            obs *= torch.randn(obs.shape, device=self.device) * 0.1 + 1 # add a gaussian noise of mean 0 and variance 0.01
-        
-        if self.latency:
-            self.obs_buffer.append(obs)
-            obs = self.obs_buffer[0]
 
         return TensorDict({
             "agents": {
                 "observation": obs,
                 "state": state,
-                # "intrinsics": self.drone.intrinsics
             },
             "stats": self.stats,
             "info": self.info
@@ -505,7 +454,6 @@ class Hover(IsaacEnv):
 
         done = (
             (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
-            # | done_misbehave
         )
 
         ep_len = self.progress_buf.unsqueeze(-1)

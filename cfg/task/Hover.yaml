@@ -6,7 +6,7 @@ defaults:
   - /base/sim_base@_here_
 
 env:
-  num_envs: 4096
+  num_envs: 2048
   max_episode_length: 500
 
 drone_model: crazyflie
@@ -19,17 +19,12 @@ reward_distance_scale: 10.0
 use_disturbance: 0
 use_eval: 0
 use_rotor2critic: 0 # need to set critic_input = 'state'
-use_action_history: false
 action_history_step: 5
 
 # observation options
-omega: false
-motor: false
 time_encoding: false
 
-action_transform: PIDrate
-# action_transform: PIDrate_FM
-# action_transform: rate
+action_transform: PIDrate # PIDrate_FM
 
 # sim2real options
 add_noise: false
