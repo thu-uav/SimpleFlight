@@ -45,7 +45,6 @@ class Track(IsaacEnv):
         self.time_encoding = cfg.task.time_encoding
         self.future_traj_steps = int(cfg.task.future_traj_steps)
         assert self.future_traj_steps > 0
-        self.intrinsics = cfg.task.intrinsics
         self.wind = cfg.task.wind
         self.use_eval = cfg.task.use_eval
         self.num_drones = 1
@@ -196,17 +195,18 @@ class Track(IsaacEnv):
             drone_state_dim = 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         
-        self.time_encoding_dim = 4
+        self.time_encoding_dim = self.cfg.task.time_encoding_dim
         if self.time_encoding:
             obs_dim += self.time_encoding_dim
-        if self.intrinsics:
-            obs_dim += sum(spec.shape[-1] for name, spec in self.drone.info_spec.items())
         
         # action history
         self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
         self.action_history_buffer = collections.deque(maxlen=self.action_history)
 
-        state_dim = obs_dim + 4
+        if self.time_encoding:
+            state_dim = obs_dim
+        else:
+            state_dim = obs_dim + self.time_encoding_dim
         
         if self.action_history > 0:
             obs_dim += self.action_history * 4
@@ -403,8 +403,6 @@ class Track(IsaacEnv):
         if self.time_encoding:
             t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
             obs.append(t.expand(-1, self.time_encoding_dim).unsqueeze(1))
-        if self.intrinsics:
-            obs.append(self.drone.get_info())
 
         self.stats["smoothness_mean"].add_(self.drone.throttle_difference)
         self.stats["smoothness_max"].set_(torch.max(self.drone.throttle_difference, self.stats["smoothness_max"]))
@@ -446,7 +444,10 @@ class Track(IsaacEnv):
         
         # add time encoding
         t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
-        state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
+        if self.time_encoding:
+            state = obs.squeeze(1)
+        else:
+            state = torch.concat([obs, t.expand(-1, self.time_encoding_dim).unsqueeze(1)], dim=-1).squeeze(1)
         
         self.stats["obs_range"].set_(torch.max(torch.abs(obs), dim=-1).values)
         

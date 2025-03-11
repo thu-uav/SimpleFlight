@@ -12,7 +12,6 @@ env:
 drone_model: Crazyflie # air
 force_sensor: false
 time_encoding: false
-intrinsics: false
 wind: false
 latency: false
 latency_step: 1
@@ -20,6 +19,7 @@ random_latency: true
 
 reset_thres: 1.
 future_traj_steps: 10
+time_encoding_dim: 4
 
 use_eval: 0
 eval_traj: 'normal' # poly, zigzag, pentagram, slow, normal, fast
