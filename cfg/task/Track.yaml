@@ -11,7 +11,7 @@ env:
 
 drone_model: Crazyflie # air
 force_sensor: false
-time_encoding: true
+time_encoding: false
 wind: false
 latency: false
 latency_step: 1
