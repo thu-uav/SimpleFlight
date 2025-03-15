@@ -24,7 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: track
+  run_name: track_actor_addtime_seed0
   # run_name: debug
   job_type: train
   entity: chenjy
@@ -36,7 +36,8 @@ wandb:
   tags: 
 
 defaults:
-  - task: Track
+  # - task: Track
+  - task: Track_ab
   # - task: Hover
   - algo: mappo
   - _self_
