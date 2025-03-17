@@ -62,10 +62,10 @@ class SACPolicy(object):
 
         # self.obs_name = f"{self.agent_spec.name}.obs"
         # self.act_name = ("action", f"{self.agent_spec.name}.action")
-        # if agent_spec.state_spec is not None:
-        #     self.state_name = f"{self.agent_spec.name}.state"
-        # else:
-        #     self.state_name = f"{self.agent_spec.name}.obs"
+        if agent_spec.state_spec is not None:
+            self.state_name = f"{self.agent_spec.name}.state"
+        else:
+            self.state_name = f"{self.agent_spec.name}.obs"
         # self.reward_name = f"{self.agent_spec.name}.reward"
         self.obs_name = ("agents", "observation")
         self.act_name = ("agents", "action")
