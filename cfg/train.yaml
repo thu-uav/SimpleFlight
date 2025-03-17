@@ -36,8 +36,8 @@ wandb:
   tags: 
 
 defaults:
-  - task: Track
-  # - task: Track_ab
+  # - task: Track
+  - task: Track_ab
   # - task: Hover
   - algo: mappo
   # - algo: sac
