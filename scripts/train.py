@@ -29,6 +29,7 @@ from omni_drones.learning import (
     TD3Policy,
     MATD3Policy,
     TDMPCPolicy,
+    MADDPGPolicy,
     Policy,
     PPOPolicy,
     PPOAdaptivePolicy, PPORNNPolicy
@@ -103,6 +104,7 @@ def main(cfg):
         "ppo_rnn": PPORNNPolicy,
         "mappo": MAPPOPolicy, 
         "happo": HAPPOPolicy,
+        "maddpg": MADDPGPolicy,
         "qmix": QMIXPolicy,
         "dqn": DQNPolicy,
         "sac": SACPolicy,
