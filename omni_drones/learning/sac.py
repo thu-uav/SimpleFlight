@@ -68,7 +68,7 @@ class SACPolicy(object):
 
         self.action_dim = self.agent_spec.action_spec.shape[-1]
         self.target_entropy = - torch.tensor(self.action_dim, device=self.device)
-        init_entropy = 0.2
+        init_entropy = 1.0
         self.log_alpha = nn.Parameter(torch.tensor(init_entropy, device=self.device).log())
         self.alpha_opt = torch.optim.Adam([self.log_alpha], lr=self.cfg.alpha_lr)
 
@@ -224,6 +224,7 @@ class Actor(nn.Module):
         super().__init__()
         self.cfg = cfg
         self.encoder = make_encoder(cfg, observation_spec)
+        self.eps = 1e-6
 
         self.act = TanhIndependentNormalModule(
             self.encoder.output_shape.numel(),
@@ -239,6 +240,10 @@ class Actor(nn.Module):
         else:
             act = act_dist.rsample()
         log_prob = act_dist.log_prob(act).unsqueeze(-1)
+        
+        act = torch.tanh(act)
+        
+        act = torch.clamp(act, -1 + self.eps, 1 - self.eps)
 
         return act, log_prob
 
