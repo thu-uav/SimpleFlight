@@ -23,6 +23,7 @@ from omni_drones.utils.wandb import init_wandb
 from omni_drones.learning import (
     MAPPOPolicy, 
     HAPPOPolicy,
+    MADDPGPolicy,
     QMIXPolicy,
     DQNPolicy,
     SACPolicy,
@@ -102,6 +103,7 @@ def main(cfg):
         "ppo_adaptive": PPOAdaptivePolicy,
         "ppo_rnn": PPORNNPolicy,
         "mappo": MAPPOPolicy, 
+        "maddpg": MADDPGPolicy,
         "happo": HAPPOPolicy,
         "qmix": QMIXPolicy,
         "dqn": DQNPolicy,

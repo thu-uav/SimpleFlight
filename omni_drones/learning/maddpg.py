@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torchrl.data
 from tensordict import TensorDict
 from tensordict.nn import TensorDictModule, make_functional
+from tensordict.nn import make_functional, TensorDictModule, TensorDictParams
 from functorch import vmap
 from torchrl.data import (
     BoundedTensorSpec,
@@ -255,15 +256,14 @@ class MADDPGPolicy(object):
 
     def state_dict(self):
         state_dict = {
-            "actor": self.actor.state_dict(),
             "critic": self.critic.state_dict(),
+            "actor_params": self.actor_params,
         }
         return state_dict
     
     def load_state_dict(self, state_dict):
-        self.actor.load_state_dict(state_dict["actor"])
+        self.actor_params = TensorDictParams(state_dict["actor_params"].to_tensordict())
         self.critic.load_state_dict(state_dict["critic"])
-
 
 def soft_update_td(target_params: TensorDict, params: TensorDict, tau: float):
     for target_param, param in zip(
