@@ -209,6 +209,11 @@ class TD3Policy(object):
             "critic_target": self.critic_target.state_dict()
         }
         return state_dict
+    
+    def load_state_dict(self, state_dict):
+        self.actor.load_state_dict(state_dict["actor"])
+        self.critic.load_state_dict(state_dict["critic"])
+
 
 from .modules.networks import MLP
 from .modules.distributions import TanhIndependentNormalModule

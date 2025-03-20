@@ -253,6 +253,17 @@ class MADDPGPolicy(object):
         infos = {k: torch.mean(v).item() for k, v in infos.items()}
         return infos
 
+    def state_dict(self):
+        state_dict = {
+            "actor": self.actor.state_dict(),
+            "critic": self.critic.state_dict(),
+        }
+        return state_dict
+    
+    def load_state_dict(self, state_dict):
+        self.actor.load_state_dict(state_dict["actor"])
+        self.critic.load_state_dict(state_dict["critic"])
+
 
 def soft_update_td(target_params: TensorDict, params: TensorDict, tau: float):
     for target_param, param in zip(

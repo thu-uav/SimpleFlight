@@ -24,13 +24,13 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  # run_name: track_wolayernorm_seed0
-  run_name: debug
+  run_name: track_ddpg_seed0
+  # run_name: debug
   job_type: train
   entity: chenjy
   project: sim2real_RAL
-  mode: disabled
-  # mode: online # set to 'disabled' when debugging locally, online
+  # mode: disabled
+  mode: online # set to 'disabled' when debugging locally, online
   run_id: 
   monitor_gym: True
   tags: 
@@ -39,7 +39,8 @@ defaults:
   # - task: Track
   - task: Track_ab
   # - task: Hover
-  - algo: mappo
+  # - algo: mappo
+  - algo: maddpg
   # - algo: sac
   # - algo: td3
   - _self_

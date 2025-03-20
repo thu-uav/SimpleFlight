@@ -1,0 +1,34 @@
+name: maddpg
+
+buffer_size: 6_000_000 # 
+train_every: 64
+batch_size: 16384
+gamma: 0.95
+tau: 0.005
+max_grad_norm: 10
+
+gradient_steps: 64
+target_noise: 0.0
+policy_noise: 0.1
+noise_clip: 0.1
+share_actor: true
+agent_name:
+
+actor:
+  hidden_units: [256, 128, 128]
+  lr: 0.0005
+  layer_norm: true
+
+  attn_encoder: PartialAttentionEncoder # if applicable
+
+critic:
+  hidden_units: [256, 128, 128]
+  lr: 0.0005
+  layer_norm: true
+
+  attn_encoder: PartialAttentionEncoder # if applicable
+
+critic_loss: smooth_l1
+
+actor_delay: 1
+target_update_interval: 4
