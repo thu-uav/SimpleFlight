@@ -9,7 +9,7 @@ env:
   num_envs: 8192
   max_episode_length: 1000
 
-drone_model: Crazyflie # air
+drone_model: air # air
 force_sensor: false
 time_encoding: false
 wind: false
@@ -55,7 +55,7 @@ reward_norm_max: 0.0
 # distance
 reward_distance_scale: 5.0
 
-action_transform: PIDrate # PIDrate_FM
+action_transform: PIDrate_FM # PIDrate_FM
 # history: true
 # randomization:
 #   drone:

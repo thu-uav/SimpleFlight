@@ -24,7 +24,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: track_ddpg_seed0
+  run_name: air_new_smooth2
   # run_name: debug
   job_type: train
   entity: chenjy
@@ -36,11 +36,11 @@ wandb:
   tags: 
 
 defaults:
-  # - task: Track
-  - task: Track_ab
+  - task: Track
+  # - task: Track_ab
   # - task: Hover
-  # - algo: mappo
-  - algo: maddpg
+  - algo: mappo
+  # - algo: maddpg
   # - algo: sac
   # - algo: td3
   - _self_
