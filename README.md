@@ -190,13 +190,12 @@ please cite [our paper](http://arxiv.org/abs/2412.11764
 ) if you find it useful:
 
 ```
-@misc{chen2024matterslearningzeroshotsimtoreal,
-      title={What Matters in Learning A Zero-Shot Sim-to-Real RL Policy for Quadrotor Control? A Comprehensive Study}, 
-      author={Jiayu Chen and Chao Yu and Yuqing Xie and Feng Gao and Yinuo Chen and Shu'ang Yu and Wenhao Tang and Shilong Ji and Mo Mu and Yi Wu and Huazhong Yang and Yu Wang},
-      year={2024},
-      eprint={2412.11764},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2412.11764}, 
+@article{chen2025matters,
+  title={What Matters in Learning A Zero-Shot Sim-to-Real RL Policy for Quadrotor Control? A Comprehensive Study},
+  author={Chen, Jiayu and Yu, Chao and Xie, Yuqing and Gao, Feng and Chen, Yinuo and Yu, Shu'ang and Tang, Wenhao and Ji, Shilong and Mu, Mo and Wu, Yi and others},
+  journal={IEEE Robotics and Automation Letters},
+  year={2025},
+  publisher={IEEE}
+}
 }
 ```
