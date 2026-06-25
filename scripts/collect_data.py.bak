@@ -1,10 +1,14 @@
 # =============================================================================
-# [修改记录 - 2026-05-19]
-# 修改文件：collect_data.py
-# 修改内容：采集时额外保存 "resets" mask（done 信号），用于训练侧过滤跨断点窗口。
-#   - 新增: done_mask = trajs[("next","done")].squeeze(-1).contiguous().bool()
-#   - dataset 中新增 key "resets": done_mask.cpu()
-# 原版备份：collect_data_20260519.py
+# [版本说明 - 2026-05-19 之前的旧版本，已备份]
+# 文件：collect_data.py
+# 问题：rollout(auto_reset=True, break_when_any_done=False) 采集时，
+#       当某个 env 触发 done（高度<0.1m 或跟踪误差>reset_thres），
+#       该 env 被立即重置，但时间轴在 dataset 中仍是连续的。
+#       结果导致 inputs[env, t] 在断点处前后属于不同 episode，
+#       训练时 TCN 滑动窗口会跨越断点，时序特征无物理意义；
+#       物理 loss 的 v_next 可能来自新 episode 初始状态，物理方程完全错误。
+# 修复：在 collect_data_20260519.py 中额外保存 resets mask，
+#       训练侧 Dataset 在构建索引时过滤所有跨断点窗口。
 # =============================================================================
 import logging
 import os
@@ -36,7 +40,7 @@ from torchrl.envs.transforms import (
 )
 from tqdm import tqdm
 
-@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_collect_pinn0528")  # [0528 更新]
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_collect_pinn0504")
 def main(cfg):
     # 1. 强制覆盖配置，确保采集模式正确
     OmegaConf.register_new_resolver("eval", eval)
@@ -153,11 +157,6 @@ def main(cfg):
     # 形状: (Num_Envs, Time_Steps, 3)
     gt_disturbance = trajs[("next", "info", "gt_disturbance")].contiguous()
 
-    # [2026-05-19 新增] 提取 done 信号，记录时间轴断点
-    # shape: [Envs, Time] bool —— True 表示该步是某 episode 末尾（之后时间轴断裂）
-    # 训练时 Dataset 用此 mask 过滤跨断点的滑动窗口，避免时序污染和物理loss错误
-    done_mask = trajs[("next", "done")].squeeze(-1).contiguous().bool()  # [Envs, Time]
-
     # 检查是否有 NaN
     if torch.isnan(pinn_state).any() or torch.isnan(gt_disturbance).any():
         print("Warning: NaNs detected in collected data!")
@@ -188,13 +187,10 @@ def main(cfg):
         "inputs": X_inputs.cpu(), 
         # labels 形状: [Envs, Time, 3]  -> [8192, 1000, 3]
         "labels": Y_labels.cpu(),
-        # resets 形状: [Envs, Time] bool —— True 表示该步 episode 结束（时间轴断点）
-        # 训练侧 Dataset 用此 mask 过滤跨断点窗口
-        "resets": done_mask.cpu(),
         "metadata": {
-            "features": ["v_body(3)", "w_body(3)", "R_flat(9)", "tau_ctrl_body(3)", "action_ctbr(4)"],  # [0528] 新增 tau_ctrl_body(3)
-            "labels": ["acc_dist_body(3)", "ang_acc_dist_body(3)"],  # [0528] 扩展到6D
-            "description": "Dataset for 6D PINN Disturbance Observer (Batch x Time x Feat)"  # [0528]
+            "features": ["v_body(3)", "w_body(3)", "R_flat(9)", "action_ctbr(4)"],
+            "labels": ["acc_res_body(3)"],
+            "description": "Dataset for PINN Disturbance Observer (3D Tensor: Batch x Time x Feat)"
         }
     }
     

@@ -259,18 +259,6 @@ def main(cfg):
         }
         info[f"eval/{traj_type}/num_crashed"] = num_crashed
 
-        # [0619新增] 提取 GT 平动扰动范数均值（与 eval_datt_6d.py 对齐）
-        # TrackDATT sinusoidal 模式下 gt_wind shape: [N, T, 1, 3]
-        # try-except 兜底，保证不影响其他指标
-        acc_dist_norm = float("nan")
-        try:
-            gt_wind = trajs[("next", "info", "gt_wind")].cpu()  # [N, T, 1, 3]
-            gt_wind = gt_wind.squeeze(-2)                        # [N, T, 3]
-            acc_dist_norm = gt_wind[..., 0:3].norm(dim=-1).mean().item()
-        except (KeyError, IndexError):
-            pass
-        info[f"eval/{traj_type}/gt_acc_dist_norm"] = acc_dist_norm
-
         if record_video and len(frames):
             video_array = np.stack(frames).transpose(0, 3, 1, 2)
             frames.clear()
@@ -297,27 +285,19 @@ def main(cfg):
         ret           = info.get(f"eval/{traj}/stats.return",         float("nan"))
         episode_len   = info.get(f"eval/{traj}/stats.episode_len",    float("nan"))
         num_crashed    = int(info.get(f"eval/{traj}/num_crashed", 0))
-        # [0619新增] 平动扰动范数均值
-        gt_acc         = info.get(f"eval/{traj}/gt_acc_dist_norm", float("nan"))
-        summary_rows.append((traj, tracking_err, err_max, ret, episode_len, gt_acc, num_crashed))
+        summary_rows.append((traj, tracking_err, err_max, ret, episode_len, num_crashed))
 
     # Log everything in one wandb step
     run.log(all_info)
 
-    # [0619更新] 打印汇总表格（含 error_max / gt_acc(m/s²) 列，与 eval_datt_6d.py 对齐）
-    print("\n" + "=" * 113)
-    print(
-        f"{'Trajectory':<15}  {'tracking_error':>15}  {'error_max':>12}  "
-        f"{'return':>12}  {'episode_len':>12}  {'gt_acc(m/s²)':>13}  {'crashed':>9}"
-    )
-    print("-" * 113)
-    for traj, err, err_max, ret, ep_len, gt_acc, crashed in summary_rows:
+    # [20260506] 打印汇总表格（含 error_max 列）
+    print("\n" + "=" * 98)
+    print(f"{'Trajectory':<15}  {'tracking_error':>15}  {'error_max':>12}  {'return':>12}  {'episode_len':>12}  {'crashed':>9}")
+    print("-" * 98)
+    for traj, err, err_max, ret, ep_len, crashed in summary_rows:
         n = base_env.num_envs
-        print(
-            f"{traj:<15}  {err:>15.4f}  {err_max:>12.4f}  "
-            f"{ret:>12.2f}  {ep_len:>12.1f}  {gt_acc:>13.4f}  {crashed:>4}/{n:<4}"
-        )
-    print("=" * 113)
+        print(f"{traj:<15}  {err:>15.4f}  {err_max:>12.4f}  {ret:>12.2f}  {ep_len:>12.1f}  {crashed:>4}/{n:<4}")
+    print("=" * 98)
 
     wandb.finish()
     simulation_app.close()

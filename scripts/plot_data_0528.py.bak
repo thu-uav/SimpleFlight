@@ -1,11 +1,3 @@
-# =============================================================================
-# [修改记录 - 2026-05-28]
-# 修改文件：plot_data.py（在原基础上修改）
-# 修改内容：
-#   1. 新增 dist_ang_acc = env_labels[:, 3:6]（转动扰动角加速度）
-#   2. 新增图7：转动扰动角加速度可视化（body frame, rad/s²）
-# 原版备份：plot_data_0528.py
-# =============================================================================
 import torch
 import matplotlib
 # 强制使用无头后端，防止 SSH 报错
@@ -18,9 +10,7 @@ import os
 # 配置参数
 # ==========================================
 
-DATA_FILE = "/root/SimpleFlight/scripts/collected_data/dataset_20260529_0315/dataset_test_20260529_0315.pt"  # 替换为你的实际文件路径
-#/root/SimpleFlight/scripts/collected_data/dataset_20260529_0315/dataset_test_20260529_0315.pt
-#collected_data/dataset_20260520_2110/dataset_test_20260520_2110.pt
+DATA_FILE = "collected_data/dataset_20260520_2110/dataset_test_20260520_2110.pt"  # 替换为你的实际文件路径
 #collected_data/dataset_20260505_0156/dataset_test_20260505_0156.pt
 #collected_data/dataset_20260316_1153/dataset_test_20260316_1153.pt
 #/root/SimpleFlight/scripts/collected_data/dataset_20260505_0156/dataset_test_20260505_0156.pt
@@ -55,8 +45,7 @@ def visualize_trajectory():
     w_body = env_inputs[:, 12:15]     
     cmd_thrust = env_inputs[:, 15]    
     cmd_br = env_inputs[:, 16:19]     
-    dist_acc     = env_labels[:, 0:3]          # 平动扰动加速度（体系，m/s²）
-    dist_ang_acc = env_labels[:, 3:6]     # [0528 新增] 转动扰动角加速度（体系，rad/s²）
+    dist_acc = env_labels[:, 0:3]     
 
     # ==========================================
     # 开始绘图 (全英文)
@@ -131,18 +120,6 @@ def visualize_trajectory():
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.legend()
     fig6.savefig(os.path.join(save_dir, "6_disturbance.png"), dpi=200, bbox_inches='tight')
-
-    # [图7 - 0528 新增] 转动扰动角加速度（体坐标系，rad/s²）
-    fig7 = plt.figure(figsize=(10, 5))
-    plt.plot(time_axis, dist_ang_acc[:, 0], label='α_dist_x (Roll)',  color='r')
-    plt.plot(time_axis, dist_ang_acc[:, 1], label='α_dist_y (Pitch)', color='g')
-    plt.plot(time_axis, dist_ang_acc[:, 2], label='α_dist_z (Yaw)',   color='b')
-    plt.title(f"Fig 7: Env {env_idx+1} - Ground Truth Angular Disturbance (body frame)")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Angular Acceleration (rad/s²)")
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend()
-    fig7.savefig(os.path.join(save_dir, "7_disturbance_ang.png"), dpi=200, bbox_inches='tight')
 
     plt.close('all')
     print("Plots saved successfully!")

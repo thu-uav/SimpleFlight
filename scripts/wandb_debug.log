@@ -1,0 +1,547 @@
+[Warning] [omni.isaac.kit.simulation_app] Modules: ['omni_drones', 'omni', 'omni.kit.app._impl.telemetry_helpers', 'omni_drones.utils', 'omni_drones.utils.torchrl', 'omni_drones.utils.torchrl.env', 'omni_drones.utils.torchrl.collector', 'omni_drones.utils.torchrl.transforms', 'omni_drones.utils.wandb', 'omni_drones.learning', 'omni_drones.learning.mappo', 'omni_drones.learning.utils', 'omni_drones.learning.utils.valuenorm', 'omni_drones.learning.utils.gae', 'omni_drones.learning.modules', 'omni_drones.learning.modules.distributions', 'omni_drones.learning.modules.rnn', 'omni_drones.learning.common', 'omni_drones.learning.modules.networks', 'omni_drones.learning.ppo', 'omni_drones.learning.ppo.ppo', 'omni_drones.learning.ppo.common', 'omni_drones.learning.ppo.ppo_adapt', 'omni_drones.learning.ppo.ppo_rnn', 'omni_drones.learning.ppo.ppo_tconv', 'omni_drones.learning.ppo.ppo_sdf_nav', 'omni_drones.learning._ppo', 'omni_drones.learning.happo', 'omni_drones.learning.qmix', 'omni_drones.learning.dqn', 'omni_drones.learning.sac', 'omni_drones.learning.td3', 'omni_drones.learning.matd3', 'omni_drones.learning.tdmpc'] were loaded before SimulationApp was started and might not be loaded correctly.
+[Warning] [omni.isaac.kit.simulation_app] Please check to make sure no extra omniverse or pxr modules are imported before the call to SimulationApp(...)
+[Warning] [omni.kit.app.plugin] No crash reporter present, dumps uploading isn't available.
+[Info] [carb] Logging to file: /root/isaac_sim-2022.2.0/kit/logs/Kit/Isaac-Sim/2022.2/kit_20260626_051104.log
+2026-06-25 21:11:04 [2ms] [Warning] [omni.ext.plugin] [ext: omni.drivesim.sensors.nv.radar] Extensions config 'extension.toml' doesn't exist '/root/isaac_sim-2022.2.0/exts/omni.drivesim.sensors.nv.radar' or '/root/isaac_sim-2022.2.0/exts/omni.drivesim.sensors.nv.radar/config'
+2026-06-25 21:11:04 [3ms] [Warning] [omni.ext.plugin] [ext: omni.drivesim.sensors.nv.lidar] Extensions config 'extension.toml' doesn't exist '/root/isaac_sim-2022.2.0/exts/omni.drivesim.sensors.nv.lidar' or '/root/isaac_sim-2022.2.0/exts/omni.drivesim.sensors.nv.lidar/config'
+[0.251s] [ext: omni.stats-0.0.0] startup
+[0.422s] [ext: omni.rtx.shadercache-1.0.0] startup
+[0.427s] [ext: omni.assets.plugins-0.0.0] startup
+[0.429s] [ext: omni.gpu_foundation-0.0.0] startup
+2026-06-25 21:11:04 [416ms] [Warning] [carb] FrameworkImpl::setDefaultPlugin(client: omni.gpu_foundation_factory.plugin, desc : [carb::graphics::Graphics v2.11], plugin : carb.graphics-vulkan.plugin) failed. Plugin selection is locked, because the interface was previously acquired by: 
+[0.440s] [ext: carb.windowing.plugins-1.0.0] startup
+2026-06-25 21:11:04 [422ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-06-25 21:11:04 [422ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.3]) (impl: carb.windowing-glfw.plugin)
+[0.443s] [ext: omni.kit.renderer.init-0.0.0] startup
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 580.95.5      | Graphics API: Vulkan
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 4090          | Yes: 0 |     | 24810   MB | 10de      | 0          |
+|     |                                  |        |     |            | 2684      | 151dce41.. |
+|=============================================================================================|
+| OS: Linux d79ush47v38s73a3h2n0-pr990, Version: 5.15.0-25-generic
+| Processor: AMD EPYC 7352 24-Core Processor                 | Cores: Unknown | Logical: 96
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 1031926 | Free Memory: 108380
+| Total Page/Swap (MB): 0 | Free Page/Swap: 0
+|---------------------------------------------------------------------------------------------|
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] IOMMU is enabled. Found 144 items in /sys/kernel/iommu_groups/.
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] On Linux only, CUDA and the display driver does not support IOMMU-enabled bare-metal PCIe peer to peer memory copy.
+However, CUDA and the display driver does support IOMMU via VM pass through. As a consequence, users on Linux,
+when running on a native bare metal system, should disable the IOMMU. The IOMMU should be enabled and the VFIO driver
+be used as a PCIe pass through for virtual machines.
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] 
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] -----------------------------------------------------------------------
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] !!!!! Local system validation failed! Incorrect configuration detected.
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin]       Summary below. Details above.
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] -----------------------------------------------------------------------
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] 
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin]  - ECC:                         OK
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin]  - IOMMU:                       FAILED
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] 
+2026-06-25 21:11:05 [1,602ms] [Warning] [gpu.foundation.plugin] -----------------------------------------------------------------------
+[2.157s] [ext: omni.kit.pipapi-0.0.0] startup
+[2.166s] [ext: omni.kit.pip_archive-0.0.0] startup
+[2.178s] [ext: omni.kit.loop-isaac-1.0.0] startup
+[2.179s] [ext: omni.kit.async_engine-0.0.0] startup
+[2.182s] [ext: omni.kit.test-0.0.0] startup
+[2.224s] [ext: omni.usd.config-1.0.0] startup
+[2.231s] [ext: omni.usd.libs-1.0.0] startup
+[2.458s] [ext: omni.isaac.core_archive-2.0.1] startup
+[2.468s] [ext: omni.pip.torch-1_13_0-0.1.4] startup
+[2.472s] [ext: omni.isaac.ml_archive-1.1.0] startup
+2026-06-25 21:11:06 [2,457ms] [Error] [omni.ext._impl.custom_importer] Failed to import python module gym. Error: No module named 'gym'. Traceback:
+Traceback (most recent call last):
+  File "/root/isaac_sim-2022.2.0/kit/kernel/py/omni/ext/_impl/custom_importer.py", line 76, in import_module
+    return importlib.import_module(name)
+  File "/opt/conda/envs/sim/lib/python3.7/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1006, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 983, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 965, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'gym'
+
+2026-06-25 21:11:06 [2,457ms] [Error] [carb.scripting-python.plugin] Exception: Extension python module: 'gym' in '/root/isaac_sim-2022.2.0/exts/omni.isaac.ml_archive/pip_prebundle' failed to load.
+
+At:
+  /root/isaac_sim-2022.2.0/kit/kernel/py/omni/ext/_impl/_internal.py(188): startup
+  /root/isaac_sim-2022.2.0/kit/kernel/py/omni/ext/_impl/_internal.py(280): startup_extension
+  PythonExtension.cpp::startup()(2): <module>
+  /root/isaac_sim-2022.2.0/exts/omni.isaac.kit/omni/isaac/kit/simulation_app.py(284): _start_app
+  /root/isaac_sim-2022.2.0/exts/omni.isaac.kit/omni/isaac/kit/simulation_app.py(169): __init__
+  /root/SimpleFlight/omni_drones/__init__.py(42): init_simulation_app
+  eval_datt.py(94): main
+  /opt/conda/envs/sim/lib/python3.7/site-packages/hydra/core/utils.py(186): run_job
+  /opt/conda/envs/sim/lib/python3.7/site-packages/hydra/_internal/hydra.py(127): run
+  /opt/conda/envs/sim/lib/python3.7/site-packages/hydra/_internal/utils.py(461): <lambda>
+  /opt/conda/envs/sim/lib/python3.7/site-packages/hydra/_internal/utils.py(220): run_and_report
+  /opt/conda/envs/sim/lib/python3.7/site-packages/hydra/_internal/utils.py(458): _run_app
+  /opt/conda/envs/sim/lib/python3.7/site-packages/hydra/_internal/utils.py(401): _run_hydra
+  /opt/conda/envs/sim/lib/python3.7/site-packages/hydra/main.py(99): decorated_main
+  eval_datt.py(327): <module>
+
+2026-06-25 21:11:06 [2,457ms] [Error] [omni.ext.plugin] [ext: omni.isaac.ml_archive-1.1.0] Failed to startup python extension.
+xcb_connection_has_error() returned true
+[2.477s] [ext: omni.client-0.1.1] startup
+[2.494s] [ext: omni.appwindow-1.0.1] startup
+2026-06-25 21:11:06 [2,475ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-06-25 21:11:06 [2,475ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.3]) (impl: carb.windowing-glfw.plugin)
+[2.499s] [ext: omni.kit.renderer.core-0.0.0] startup
+2026-06-25 21:11:06 [2,482ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-06-25 21:11:06 [2,482ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.3]) (impl: carb.windowing-glfw.plugin)
+2026-06-25 21:11:06 [2,484ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-06-25 21:11:06 [2,484ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.3]) (impl: carb.windowing-glfw.plugin)
+[2.508s] [ext: omni.kit.renderer.capture-0.0.0] startup
+[2.513s] [ext: omni.kit.renderer.imgui-0.0.0] startup
+2026-06-25 21:11:06 [2,497ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-06-25 21:11:06 [2,497ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.3]) (impl: carb.windowing-glfw.plugin)
+2026-06-25 21:11:06 [2,498ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-06-25 21:11:06 [2,498ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.3]) (impl: carb.windowing-glfw.plugin)
+[2.623s] [ext: carb.audio-0.1.0] startup
+[2.635s] [ext: omni.ui-2.12.23] startup
+[2.649s] [ext: omni.uiaudio-1.0.0] startup
+[2.651s] [ext: omni.kit.mainwindow-1.0.0] startup
+[2.655s] [ext: omni.kit.uiapp-0.0.0] startup
+[2.655s] [ext: omni.usd.schema.physics-1.0.0] startup
+[2.714s] [ext: omni.usd.schema.omniscripting-1.0.0] startup
+[2.730s] [ext: omni.usd.schema.audio-0.0.0] startup
+[2.756s] [ext: omni.usd.schema.semantics-0.0.0] startup
+[2.772s] [ext: omni.usd.schema.anim-0.0.0] startup
+[2.884s] [ext: omni.usd.schema.omnigraph-1.0.0] startup
+[2.984s] [ext: omni.usd.schema.geospatial-0.0.0] startup
+[2.999s] [ext: omni.usd.core-1.0.0] startup
+[3.004s] [ext: omni.gpucompute.plugins-0.0.0] startup
+[3.004s] [ext: omni.timeline-1.0.5] startup
+[3.009s] [ext: omni.kit.audiodeviceenum-1.0.0] startup
+[3.012s] [ext: omni.hydra.usdrt_delegate-4.1.1] startup
+[3.037s] [ext: omni.kit.window.popup_dialog-2.0.15] startup
+[3.049s] [ext: omni.kit.actions.core-1.0.0] startup
+[3.053s] [ext: omni.kit.widget.nucleus_connector-1.0.2] startup
+[3.059s] [ext: omni.kit.commands-1.4.5] startup
+[3.067s] [ext: omni.hydra.scene_delegate-0.3.0] startup
+[3.076s] [ext: omni.usd-1.6.23] startup
+[3.144s] [ext: omni.kit.asset_converter-1.2.39] startup
+[3.163s] [ext: omni.usd.schema.physx-0.0.0] startup
+[3.206s] [ext: omni.usd.schema.isaac-1.0.0] startup
+[3.237s] [ext: omni.usd.schema.forcefield-0.0.0] startup
+[3.255s] [ext: omni.kit.collaboration.channel_manager-1.0.9] startup
+[3.259s] [ext: omni.inspect-1.0.1] startup
+[3.269s] [ext: omni.kit.menu.utils-1.4.7] startup
+[3.284s] [ext: omni.kit.usd.layers-2.0.10] startup
+[3.296s] [ext: omni.graph.core-2.64.7] startup
+[3.301s] [ext: omni.iray.libs-0.0.0] startup
+[3.306s] [ext: omni.kit.primitive.mesh-1.0.6] startup
+[3.312s] [ext: omni.volume-0.1.0] startup
+[3.317s] [ext: omni.mdl.neuraylib-0.1.0] startup
+[3.323s] [ext: omni.kit.stage_templates-1.1.11] startup
+[3.327s] [ext: omni.graph.tools-1.17.0] startup
+[3.348s] [ext: omni.hydra.rtx-0.1.0] startup
+[3.358s] [ext: omni.kit.usd_undo-0.1.1] startup
+[3.361s] [ext: omni.ui.scene-1.5.17] startup
+[3.370s] [ext: omni.graph-1.50.1] startup
+[3.425s] [ext: omni.debugdraw-0.1.1] startup
+[3.434s] [ext: omni.hydra.engine.stats-1.0.0] startup
+[3.442s] [ext: omni.kit.search_core-1.0.1] startup
+[3.445s] [ext: omni.kit.widget.path_field-2.0.4] startup
+[3.446s] [ext: omni.kit.widget.versioning-1.3.8] startup
+[3.448s] [ext: omni.kit.widget.filebrowser-2.3.8] startup
+[3.454s] [ext: omni.kit.widget.browser_bar-2.0.4] startup
+[3.456s] [ext: omni.kit.notification_manager-1.0.4] startup
+[3.459s] [ext: omni.kvdb-0.0.0] startup
+[3.464s] [ext: omni.kit.window.filepicker-2.7.8] startup
+OmniAssetFileFormat
+[3.544s] [ext: omni.kit.viewport.registry-104.0.2] startup
+[3.549s] [ext: omni.kit.window.file_importer-1.0.8] startup
+[3.550s] [ext: omni.hydra.pxr-1.1.2] startup
+[3.559s] [ext: omni.mdl-0.1.0] startup
+[3.692s] [ext: omni.kit.clipboard-1.0.0] startup
+[3.695s] [ext: omni.activity.core-1.0.1] startup
+[3.704s] [ext: omni.kit.hydra_texture-1.0.11] startup
+[3.719s] [ext: omni.kit.material.library-1.3.21] startup
+[3.729s] [ext: omni.kit.menu.create-1.0.8] startup
+[3.732s] [ext: omni.kit.window.drop_support-1.0.1] startup
+[3.733s] [ext: omni.kit.widget.viewport-104.1.15] startup
+[3.738s] [ext: omni.kit.viewport.legacy_gizmos-1.0.8] startup
+[3.745s] [ext: omni.kit.context_menu-1.5.10] startup
+[3.752s] [ext: omni.kit.viewport.window-104.1.18] startup
+[3.800s] [ext: omni.localcache-0.0.0] startup
+[3.808s] [ext: omni.kit.window.viewport-0.0.0] startup
+[5.351s] [ext: omni.convexdecomposition-104.1.6-5.1] startup
+[5.357s] [ext: omni.kit.viewport.utility-1.0.12] startup
+[5.358s] [ext: omni.kit.window.file_exporter-1.0.10] startup
+[5.359s] [ext: omni.ui_query-1.1.1] startup
+[5.363s] [ext: omni.kit.window.file-1.3.30] startup
+[5.366s] [ext: omni.kit.window.content_browser_registry-0.0.1] startup
+[5.367s] [ext: omni.kit.ui_test-1.2.9] startup
+[5.372s] [ext: omni.kit.window.property-1.8.2] startup
+[5.374s] [ext: omni.kit.window.content_browser-2.6.5] startup
+[5.391s] [ext: omni.kit.widget.stage-2.7.18] startup
+[5.395s] [ext: omni.usdphysics-104.1.6-5.1] startup
+[5.400s] [ext: omni.kit.property.usd-3.18.12] startup
+[5.412s] [ext: omni.physx-104.1.6-5.1] startup
+2026-06-25 21:11:09 [5,415ms] [Warning] [omni.kvdb.plugin] wasn't able to load the meta database, trying to repair it ...
+2026-06-25 21:11:09 [5,416ms] [Warning] [omni.kvdb.plugin] repair failed
+[5.436s] [ext: omni.kit.widget.settings-1.0.1] startup
+[5.438s] [ext: omni.kit.widget.graph-1.5.3] startup
+[5.476s] [ext: omni.kit.widget.text_editor-1.0.2] startup
+[5.478s] [ext: omni.kit.window.preferences-1.3.7] startup
+[5.540s] [ext: omni.kit.window.extensions-1.1.1] startup
+[5.546s] [ext: omni.kit.widget.prompt-1.0.4] startup
+[5.548s] [ext: omni.physics.tensors-0.1.0] startup
+[5.559s] [ext: omni.graph.ui-1.24.1] startup
+[5.601s] [ext: omni.isaac.version-1.0.0] startup
+[5.603s] [ext: omni.physx.tensors-0.1.0] startup
+[5.613s] [ext: omni.graph.action-1.31.0] startup
+[5.623s] [ext: omni.kit.numpy.common-0.1.0] startup
+[5.627s] [ext: omni.kit.graph.delegate.default-1.0.18] startup
+[5.631s] [ext: omni.kit.widget.searchfield-1.0.8] startup
+[5.632s] [ext: omni.isaac.dynamic_control-1.2.2] startup
+[5.641s] [ext: omni.kit.manipulator.viewport-104.0.7] startup
+[5.642s] [ext: omni.kit.graph.editor.core-1.4.7] startup
+[5.645s] [ext: omni.isaac.core-1.42.0] startup
+[5.896s] [ext: omni.graph.visualization.nodes-2.0.0] startup
+[5.908s] [ext: omni.kit.graph.widget.variables-2.0.4] startup
+[5.909s] [ext: omni.isaac.ui-0.4.3] startup
+[5.912s] [ext: omni.isaac.isaac_sensor-2.0.0] startup
+2026-06-25 21:11:10 [5,892ms] [Warning] [omni.isaac.isaac_sensor] omni.isaac.isaac_sensor is deprecated and was renamed; use omni.isaac.sensor
+[5.912s] [ext: omni.isaac.surface_gripper-0.3.2] startup
+2026-06-25 21:11:10 [5,895ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Surface Gripper *********************
+2026-06-25 21:11:10 [5,895ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Surface Gripper uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[5.918s] [ext: omni.kit.graph.usd.commands-1.2.0] startup
+[5.919s] [ext: omni.kit.graph.delegate.modern-1.6.4] startup
+[5.921s] [ext: omni.isaac.manipulators-1.1.0] startup
+[5.923s] [ext: omni.graph.window.core-1.41.0] startup
+[5.936s] [ext: omni.isaac.mjcf-0.3.0] startup
+2026-06-25 21:11:10 [5,925ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription MJCF Importer *********************
+2026-06-25 21:11:10 [5,925ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] MJCF Importer uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[5.946s] [ext: omni.graph.window.generic-1.3.10] startup
+2026-06-25 21:11:10 [5,928ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Push Graph *********************
+2026-06-25 21:11:10 [5,928ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Push Graph uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [5,928ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Lazy Graph *********************
+2026-06-25 21:11:10 [5,928ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Lazy Graph uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[5.948s] [ext: omni.kit.widget.spinner-1.0.4] startup
+[5.949s] [ext: omni.kit.window.cursor-1.1.1] startup
+[5.950s] [ext: omni.isaac.lula-1.2.1] startup
+[5.967s] [ext: omni.graph.nodes-1.48.3] startup
+[5.983s] [ext: omni.kit.viewport.menubar.core-104.4.1] startup
+[6.138s] [ext: omni.isaac.motion_planning-0.2.1] startup
+[6.150s] [ext: omni.kit.widget.zoombar-1.0.4] startup
+[6.151s] [ext: omni.syntheticdata-0.2.4] startup
+2026-06-25 21:11:10 [6,148ms] [Warning] [omni.kit.viewport.menubar.core.menu_item.viewport_menu_item] ViewportMenuItem order argument is deprecated, use order_setting_path
+[6.174s] [ext: omni.isaac.motion_generation-4.5.5] startup
+[6.180s] [ext: omni.kit.browser.core-2.2.1] startup
+[6.187s] [ext: omni.isaac.synthetic_utils-0.4.2] startup
+[6.195s] [ext: omni.isaac.universal_robots-0.3.1] startup
+[6.196s] [ext: omni.kit.browser.folder.core-1.7.1] startup
+[6.200s] [ext: omni.isaac.urdf-0.5.4] startup
+2026-06-25 21:11:10 [6,188ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription URDF Importer *********************
+2026-06-25 21:11:10 [6,188ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] URDF Importer uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,189ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Carter URDF *********************
+2026-06-25 21:11:10 [6,189ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Carter URDF uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,197ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Franka URDF *********************
+2026-06-25 21:11:10 [6,197ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Franka URDF uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,204ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Kaya URDF *********************
+2026-06-25 21:11:10 [6,204ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Kaya URDF uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,212ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription UR10 URDF *********************
+2026-06-25 21:11:10 [6,212ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] UR10 URDF uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[6.238s] [ext: omni.isaac.utils-0.2.3] startup
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription UR3 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] UR3 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription UR5 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] UR5 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription UR10 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] UR10 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription UR3e *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] UR3e uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription UR5e *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] UR5e uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription UR10e *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] UR10e uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription UR16e *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] UR16e uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Cobotta Pro 900 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Cobotta Pro 900 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Cobotta Pro 1300 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Cobotta Pro 1300 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Dofbot *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Dofbot uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Franka *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Franka uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription A1 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] A1 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Go1 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Go1 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription ANYmal C *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ANYmal C uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription ANYmal C *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ANYmal C uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Crazyflie *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Crazyflie uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Quadcopter *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Quadcopter uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Carter V1 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Carter V1 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Carter V2 *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Carter V2 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Jetbot *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Jetbot uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Jetracer *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Jetracer uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Kaya *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Kaya uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Transporter *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Transporter uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Flat Grid *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Flat Grid uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Grid Room *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Grid Room uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Simple Room *********************
+2026-06-25 21:11:10 [6,223ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Simple Room uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Small Warehouse *********************
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Small Warehouse uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Small Warehouse With Multiple Shelves *********************
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Small Warehouse With Multiple Shelves uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Full Warehouse *********************
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Full Warehouse uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Hospital *********************
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Hospital uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Office *********************
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Office uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription tag36h11 *********************
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] tag36h11 uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Allegro Hand *********************
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Allegro Hand uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Shadow Hand *********************
+2026-06-25 21:11:10 [6,224ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Shadow Hand uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[6.244s] [ext: omni.kit.browser.sample-1.2.4] startup
+[6.246s] [ext: omni.graph.scriptnode-0.9.3] startup
+[6.250s] [ext: omni.command.usd-1.0.1] startup
+[6.255s] [ext: omni.warp-0.6.1] startup
+[6.508s] [ext: omni.kit.widget.live_session_management-1.1.3] startup
+[6.510s] [ext: omni.kit.hotkeys.core-1.0.8] startup
+[6.516s] [ext: omni.replicator.core-1.6.4] startup
+2026-06-25 21:11:10 [6,580ms] [Warning] [omni.replicator.core.scripts.annotators] Annotator PostProcessDispatch is already registered, overwriting annotator template
+[6.648s] [ext: omni.kit.widget.highlight_label-1.0.0] startup
+[6.649s] [ext: omni.kit.widget.layers-1.6.9] startup
+[6.661s] [ext: omni.isaac.core_nodes-0.21.0] startup
+[6.678s] [ext: omni.kit.actions.window-1.1.0] startup
+[6.683s] [ext: omni.isaac.debug_draw-0.2.2] startup
+[6.691s] [ext: omni.kit.property.layer-1.1.3] startup
+[6.693s] [ext: omni.isaac.wheeled_robots-0.6.1] startup
+[6.711s] [ext: omni.kit.hotkeys.window-1.1.3] startup
+[6.717s] [ext: omni.isaac.occupancy_map-0.2.6] startup
+2026-06-25 21:11:11 [6,719ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Occupancy Map *********************
+2026-06-25 21:11:11 [6,719ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Occupancy Map uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:11 [6,725ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Block World Generator *********************
+2026-06-25 21:11:11 [6,725ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Block World Generator uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[6.747s] [ext: omni.kit.property.audio-1.0.6] startup
+[6.749s] [ext: omni.kit.property.camera-1.0.3] startup
+[6.750s] [ext: omni.kit.property.geometry-1.2.2] startup
+[6.752s] [ext: omni.kit.widget.stage_icons-1.0.2] startup
+[6.754s] [ext: omni.kit.property.light-1.0.6] startup
+[6.755s] [ext: omni.kit.property.material-1.8.16] startup
+[6.758s] [ext: omni.hydra.scene_api-0.1.1] startup
+[6.767s] [ext: omni.kit.window.stage-2.3.11] startup
+[6.771s] [ext: omni.kit.property.render-1.1.0] startup
+[6.772s] [ext: omni.kit.property.skel-1.0.1] startup
+[6.773s] [ext: omni.kit.property.transform-1.3.4] startup
+[6.777s] [ext: omni.kit.menu.stage-1.2.1] startup
+[6.778s] [ext: omni.kit.manipulator.transform-104.6.11] startup
+[6.782s] [ext: omni.kit.profiler.window-2.0.4] startup
+[6.902s] [ext: omni.kit.property.bundle-1.2.6] startup
+[6.904s] [ext: omni.kit.manipulator.selector-1.0.1] startup
+[6.905s] [ext: omni.kit.manipulator.tool.snap-1.2.2] startup
+[6.910s] [ext: omni.kit.window.toolbar-1.3.3] startup
+[6.919s] [ext: omni.kit.property.isaac-0.1.1] startup
+[6.920s] [ext: omni.kit.stage_column.payload-1.0.8] startup
+[6.924s] [ext: omni.kit.manipulator.camera-104.0.22] startup
+[6.924s] [ext: omni.kit.manipulator.prim-104.10.5] startup
+[7.092s] [ext: omni.kit.manipulator.selection-104.0.6] startup
+[7.092s] [ext: omni.kit.viewport.menubar.camera-104.1.7] startup
+[7.097s] [ext: omni.kit.viewport.menubar.render-104.0.19] startup
+[7.100s] [ext: omni.kit.viewport.menubar.display-104.1.11] startup
+[7.101s] [ext: omni.physx.commands-104.1.6-5.1] startup
+[7.108s] [ext: omni.kit.viewport.menubar.settings-104.3.4] startup
+[7.113s] [ext: omni.rtx.window.settings-0.6.2] startup
+[7.122s] [ext: omni.kit.stage_column.variant-1.0.9] startup
+[7.124s] [ext: omni.physx.ui-104.1.6-5.1] startup
+[7.196s] [ext: omni.kit.viewport.bundle-104.0.2] startup
+[7.196s] [ext: omni.hydra.pxr.settings-1.0.3] startup
+[7.197s] [ext: omni.kit.viewport.menubar.lighting-104.0.8] startup
+[7.200s] [ext: omni.kit.property.physx-0.1.0] startup
+[7.276s] [ext: omni.physx.demos-104.1.6-5.1] startup
+[7.281s] [ext: omni.kit.viewport.pxr-104.0.1] startup
+[7.281s] [ext: omni.kit.viewport.ready-1.0.2] startup
+[7.282s] [ext: omni.kit.viewport.rtx-104.0.0] startup
+[7.282s] [ext: omni.physx.camera-104.1.6-5.1] startup
+[7.292s] [ext: omni.kit.selection-0.1.0] startup
+[7.295s] [ext: omni.physx.cct-104.1.6-5.1] startup
+[7.852s] [ext: omni.physx.supportui-104.1.6-5.1] startup
+[7.976s] [ext: omni.kit.widget.live-2.0.3] startup
+2026-06-25 21:11:12 [7,959ms] [Warning] [omni.kit.widget.live.cache_state_menu] Unable to detect Omniverse Cache Server. Consider installing it for better IO performance.
+[7.979s] [ext: omni.physx.vehicle-104.1.6-5.1] startup
+[7.995s] [ext: omni.kit.menu.edit-1.1.5] startup
+2026-06-25 21:11:12 [7,978ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Toggle Grid Visibility *********************
+2026-06-25 21:11:12 [7,978ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Toggle Grid Visibility uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [7,978ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Toggle Camera Visibility *********************
+2026-06-25 21:11:12 [7,978ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Toggle Camera Visibility uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [7,978ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Toggle Light Visibility *********************
+2026-06-25 21:11:12 [7,978ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Toggle Light Visibility uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[7.998s] [ext: omni.kit.window.commands-0.2.4] startup
+[7.999s] [ext: omni.kit.window.console-0.2.3] startup
+[8.012s] [ext: omni.physx.bundle-104.1.6-5.1] startup
+[8.012s] [ext: omni.graph.bundle.action-1.3.0] startup
+[8.012s] [ext: omni.isaac.range_sensor-0.7.0] startup
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Rotating *********************
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Rotating uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Generic *********************
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Generic uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Array *********************
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Array uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Emitter *********************
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Emitter uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription FiringGroup *********************
+2026-06-25 21:11:12 [8,001ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] FiringGroup uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,002ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription LIDAR *********************
+2026-06-25 21:11:12 [8,002ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] LIDAR uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,010ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Ultrasonic *********************
+2026-06-25 21:11:12 [8,010ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Ultrasonic uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,018ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Generic Range Sensor *********************
+2026-06-25 21:11:12 [8,018ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Generic Range Sensor uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[8.050s] [ext: omni.kit.window.script_editor-1.6.4] startup
+[8.061s] [ext: omni.kit.window.status_bar-0.1.5] startup
+[8.067s] [ext: omni.kit.window.title-1.1.2] startup
+2026-06-25 21:11:12 [8,048ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-06-25 21:11:12 [8,048ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.3]) (impl: carb.windowing-glfw.plugin)
+2026-06-25 21:11:12 [8,050ms] [Warning] [carb] [Plugin: libomni.structuredlog.plugin.so] Module /root/isaac_sim-2022.2.0/kit/libomni.structuredlog.plugin.so remained loaded after unload request
+2026-06-25 21:11:12 [8,051ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-06-25 21:11:12 [8,051ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.3]) (impl: carb.windowing-glfw.plugin)
+[8.072s] [ext: omni.replicator.composer-1.2.2] startup
+[8.074s] [ext: omni.replicator.isaac-1.7.3] startup
+[8.090s] [ext: omni.isaac.kit-1.2.1] startup
+[8.090s] [ext: omni.isaac.sensor-5.3.1] startup
+2026-06-25 21:11:12 [8,071ms] [Warning] [omni.ext.plugin] [ext: omni.isaac.sensor-5.3.1] Native plugin search dir contains several files: /root/isaac_sim-2022.2.0/exts/omni.isaac.sensor/bin . It makes dir walk slow, replace with the exact path to the plugin instead of a wildcard.
+2026-06-25 21:11:12 [8,154ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Contact Sensor *********************
+2026-06-25 21:11:12 [8,154ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Contact Sensor uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,154ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Imu Sensor *********************
+2026-06-25 21:11:12 [8,154ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Imu Sensor uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,154ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Rotating *********************
+2026-06-25 21:11:12 [8,154ms] [Warning] [omni.kit.menu.utils.scrwandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+Starting kit application with the following args:  ['/root/isaac_sim-2022.2.0/exts/omni.isaac.kit/omni/isaac/kit/simulation_app.py', '/root/isaac_sim-2022.2.0/apps/omni.isaac.sim.python.kit', '--/app/tokens/exe-path=/root/isaac_sim-2022.2.0/kit', '--/persistent/app/viewport/displayOptions=3094', '--/rtx/materialDb/syncLoads=True', '--/rtx/hydra/materialSyncLoads=True--/omni.kit.plugin/syncUsdLoads=True', '--/app/renderer/resolution/width=1280', '--/app/renderer/resolution/height=720', '--/app/window/width=1440', '--/app/window/height=900', '--/renderer/multiGpu/enabled=True', '--/app/fastShutdown=True', '--ext-folder', '/root/isaac_sim-2022.2.0/exts', '--ext-folder', '/root/isaac_sim-2022.2.0/apps', '--/physics/cudaDevice=0', '--portable', '--no-window', '--allow-root']
+Passing the following args to the base kit application:  ['headless=true', 'wandb.mode=online']
+Warp 0.6.1 initialized:
+   CUDA Toolkit: 11.5, Driver: 13.0
+   Devices:
+     "cpu"    | x86_64
+     "cuda:0" | NVIDIA GeForce RTX 4090 (sm_89)
+   Kernel cache: /root/.cache/warp/0.6.1
+[11.536s] RTX ready
+[11.536s] RTX ready
+[2026-06-26 05:11:20,578][wandb.sdk.lib.retry][INFO] - Retry attempt failed:
+Traceback (most recent call last):
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/connection.py", line 175, in _new_conn
+    (self._dns_host, self.port), self.timeout, **extra_kw
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/util/connection.py", line 95, in create_connection
+    raise err
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/util/connection.py", line 85, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/connectionpool.py", line 700, in urlopen
+    self._prepare_proxy(conn)
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/connectionpool.py", line 996, in _prepare_proxy
+    conn.connect()
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/connection.py", line 358, in connect
+    self.sock = conn = self._new_conn()
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/connection.py", line 187, in _new_conn
+    self, "Failed to establish a new connection: %s" % e
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPSConnection object at 0x7f2bd44f7790>: Failed to establish a new connection: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/root/isaac_sim-2022.2.0/exts/omni.isaac.core_archive/pip_prebundle/requests/adapters.py", line 449, in send
+    timeout=timeout
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/connectionpool.py", line 788, in urlopen
+    method, url, error=e, _pool=self, _stacktrace=sys.exc_info()[2]
+  File "/root/isaac_sim-2022.2.0/kit/extscore/omni.kit.pip_archive/pip_prebundle/urllib3/util/retry.py", line 592, in increment
+    raise MaxRetryError(_pool, url, error or ResponseError(cause))
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.wandb.ai', port=443): Max retries exceeded with url: /graphql (Caused by ProxyError('Cannot connect to proxy.', NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f2bd44f7790>: Failed to establish a new connection: [Errno 111] Connection refused')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/sdk/lib/retry.py", line 131, in __call__
+    result = self._call_fn(*args, **kwargs)
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/sdk/internal/internal_api.py", line 400, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/sdk/lib/gql_request.py", line 58, in execute
+    request = self.session.post(self.url, **post_args)
+  File "/root/isaac_sim-2022.2.0/exts/omni.isaac.core_archive/pip_prebundle/requests/sessions.py", line 590, in post
+    return self.request('POST', url, data=data, json=json, **kwargs)
+  File "/root/isaac_sim-2022.2.0/exts/omni.isaac.core_archive/pip_prebundle/requests/sessions.py", line 542, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/root/isaac_sim-2022.2.0/exts/omni.isaac.core_archive/pip_prebundle/requests/sessions.py", line 655, in send
+    r = adapter.send(request, **kwargs)
+  File "/root/isaac_sim-2022.2.0/exts/omni.isaac.core_archive/pip_prebundle/requests/adapters.py", line 510, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='api.wandb.ai', port=443): Max retries exceeded with url: /graphql (Caused by ProxyError('Cannot connect to proxy.', NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f2bd44f7790>: Failed to establish a new connection: [Errno 111] Connection refused')))
+wandb: Network error (ProxyError), entering retry loop.
+wandb: W&B API key is configured. Use `wandb login --relogin` to force relogin
+wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: | Waiting for wandb.init()...wandb: / Waiting for wandb.init()...wandb: - Waiting for wandb.init()...[2026-06-26 05:12:52,450][urllib3.connectionpool][WARNING] - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ProxyError('Cannot connect to proxy.', NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f29200a2110>: Failed to establish a new connection: [Errno 111] Connection refused'))': /api/4504800232407040/envelope/
+[2026-06-26 05:12:52,450][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ProxyError('Cannot connect to proxy.', NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f29200a2c50>: Failed to establish a new connection: [Errno 111] Connection refused'))': /api/4504800232407040/envelope/
+[2026-06-26 05:12:52,451][urllib3.connectionpool][WARNING] - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ProxyError('Cannot connect to proxy.', NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f29200a2c10>: Failed to establish a new connection: [Errno 111] Connection refused'))': /api/4504800232407040/envelope/
+Error executing job with overrides: ['headless=true', 'wandb.mode=online']
+Traceback (most recent call last):
+  File "eval_datt.py", line 95, in main
+    run = init_wandb(cfg)
+  File "/root/SimpleFlight/omni_drones/utils/wandb.py", line 64, in init_wandb
+    run = wandb.init(**kwargs)
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/sdk/wandb_init.py", line 1270, in init
+    wandb._sentry.reraise(e)
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/analytics/sentry.py", line 161, in reraise
+    raise exc.with_traceback(sys.exc_info()[2])
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/sdk/wandb_init.py", line 1256, in init
+    return wi.init()
+  File "/opt/conda/envs/sim/lib/python3.7/site-packages/wandb/sdk/wandb_init.py", line 847, in init
+    raise error
+wandb.errors.errors.CommError: Run initialization has timed out after 90.0 sec. Please try increasing the timeout with the `init_timeout` setting: `wandb.init(settings=wandb.Settings(init_timeout=120))`.
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+ipts.builder_utils] Rotating uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,154ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Solid State *********************
+2026-06-25 21:11:12 [8,154ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Solid State uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,157ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Contact *********************
+2026-06-25 21:11:12 [8,157ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Contact uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+2026-06-25 21:11:12 [8,157ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription IMU *********************
+2026-06-25 21:11:12 [8,157ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] IMU uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[8.181s] [ext: omni.isaac.franka-0.4.0] startup
+[8.182s] [ext: omni.resourcemonitor-1.0.0] startup
+[8.193s] [ext: omni.rtx.settings.core-0.5.8] startup
+[8.199s] [ext: semantics.schema.editor-0.3.2] startup
+[8.205s] [ext: omni.kit.menu.file-1.1.3] startup
+[8.207s] [ext: omni.isaac.quadruped-1.2.2] startup
+[8.445s] [ext: omni.isaac.cortex-0.2.10] startup
+[8.445s] [ext: omni.graph.window.action-1.4.0] startup
+2026-06-25 21:11:12 [8,427ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] ********************* MenuItemDescription Action Graph *********************
+2026-06-25 21:11:12 [8,427ms] [Warning] [omni.kit.menu.utils.scripts.builder_utils] Action Graph uses onclick_fn and/or unclick_fn which are deprecated. Use onclick_action and unclick_action instead which use omni.kit.actions.core
+[8.447s] [ext: omni.kit.window.stats-0.1.2] startup
+[8.448s] [ext: omni.isaac.sim.python-2022.2.0] startup
+[8.449s] Simulation App Starting
+2026-06-25 21:11:13 [9,397ms] [Warning] [carb.audio.device] audio device is misconfigured or broken {deviceIndex = 0, name = 'default'} (The device is likely misconfigured, check your $HOME/.asoundrc)
+2026-06-25 21:11:13 [9,397ms] [Warning] [carb.audio.output] failed to retrieve the capabilities for device 0 {result = eDeviceLost (2)}
+2026-06-25 21:11:13 [9,397ms] [Warning] [carb.audio.context] failed to set the requested output during context creation.  Using a null streamer instead {result = eDeviceLost (2)}
+[11.274s] app ready
+[11.758s] Simulation App Startup Complete
+2026-06-25 21:12:53 [109,004ms] [Warning] [carb.audio.context] 1 contexts were leaked

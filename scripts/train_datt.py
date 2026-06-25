@@ -86,7 +86,8 @@ class EpisodeStats:
         return len(self._stats)
 
 
-@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_datt")
+@hydra.main(version_base=None, config_path=CONFIG_PATH,
+           config_name="train_datt0615")  # [0626] 切换到6D GT oracle（平动+转动）+ Jacobian约束训练；"train_datt0615_3d"=3D oracle对比基准
 def main(cfg):
     OmegaConf.register_new_resolver("eval", eval)
     OmegaConf.resolve(cfg)

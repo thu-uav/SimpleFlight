@@ -1,15 +1,22 @@
 """
-eval_datt.py  —  Evaluation script for DATT-trained policies
+eval_datt_6d.py  —  Evaluation script for DATT-trained policies (6D disturbance)
 这个轨迹会一次性依次验证6个轨迹
-=============================================================
+===================================================================================
+
+[0615新增] 基于 eval_datt.py 修改，适配 TrackDATT0615（6D GT oracle：平动3D + 转动3D）。
+主要改动：
+  1. config_name → "train_datt0615"
+  2. 导入 TrackDATT0615 而非 TrackDATT
+  3. evaluate() 内额外提取 gt_wind[...,0:3]/[...,3:6] 范数均值，写入 info
+  4. 汇总表格新增 gt_acc_norm / gt_ang_acc_norm 两列
 
 Evaluates a saved checkpoint across multiple trajectory types and logs
 per-trajectory stats to wandb.
 
 Usage
 -----
-python eval_datt.py \
-    model_dir=outputs/track_datt/<run>/wandb/run-xxx/files/checkpoint_final.pt \
+python eval_datt_6d.py \
+    model_dir=outputs/track_datt_6d/<run>/wandb/run-xxx/files/checkpoint_final.pt \
     headless=true \
     [traj_types="[slow,normal,fast,poly,zigzag,pentagram]"]
 
@@ -81,7 +88,9 @@ ALL_TRAJ_TYPES = ["slow", "normal", "fast", "poly", "zigzag", "pentagram"]
 # Main
 # ---------------------------------------------------------------------------
 
-@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_datt")
+# [0615] 原 eval_datt.py 使用 config_name="train_datt"（TrackDATT0427，3D GT oracle）
+# 此脚本使用 "train_datt0615"（TrackDATT0615，6D GT oracle：平动+转动）
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_datt0615")
 def main(cfg):
     OmegaConf.register_new_resolver("eval", eval)
     OmegaConf.resolve(cfg)
@@ -96,9 +105,9 @@ def main(cfg):
     setproctitle(run.name)
     print(OmegaConf.to_yaml(cfg))
 
-    # Must import TrackDATT to register it in IsaacEnv.REGISTRY
+    # [0615] 导入 TrackDATT0615（6D GT oracle）以注册到 IsaacEnv.REGISTRY
     from omni_drones.envs.isaac_env import IsaacEnv
-    from omni_drones.envs.single.track_datt import TrackDATT  # noqa: F401
+    from omni_drones.envs.single.track_datt0615_6d import TrackDATT0615  # noqa: F401
 
     algos = {
         "ppo": PPOPolicy,
@@ -187,7 +196,7 @@ def main(cfg):
     if cfg.model_dir is None:
         raise ValueError(
             "model_dir must be specified, "
-            "e.g. model_dir=outputs/track_datt/.../checkpoint_final.pt"
+            "e.g. model_dir=outputs/track_datt0615/.../checkpoint_final.pt"
         )
     policy.load_state_dict(torch.load(cfg.model_dir))
     print(f"Loaded checkpoint from: {cfg.model_dir}")
@@ -259,17 +268,20 @@ def main(cfg):
         }
         info[f"eval/{traj_type}/num_crashed"] = num_crashed
 
-        # [0619新增] 提取 GT 平动扰动范数均值（与 eval_datt_6d.py 对齐）
-        # TrackDATT sinusoidal 模式下 gt_wind shape: [N, T, 1, 3]
-        # try-except 兜底，保证不影响其他指标
+        # [0615新增] 提取 GT 扰动范数统计（平动 acc_dist 3D + 转动 ang_acc_dist 3D）
+        # gt_wind shape in tensordict: [N_env, T, 1, 6]，需 squeeze 掉 drone 维度
         acc_dist_norm = float("nan")
+        ang_acc_dist_norm = float("nan")
         try:
-            gt_wind = trajs[("next", "info", "gt_wind")].cpu()  # [N, T, 1, 3]
-            gt_wind = gt_wind.squeeze(-2)                        # [N, T, 3]
-            acc_dist_norm = gt_wind[..., 0:3].norm(dim=-1).mean().item()
+            gt_wind = trajs[("next", "info", "gt_wind")].cpu()  # [N, T, 1, 6]
+            gt_wind = gt_wind.squeeze(-2)                        # [N, T, 6]
+            acc_dist_norm     = gt_wind[..., 0:3].norm(dim=-1).mean().item()
+            ang_acc_dist_norm = gt_wind[..., 3:6].norm(dim=-1).mean().item()
         except (KeyError, IndexError):
+            # gt_wind 不在 info 子树时降级，不影响其他指标
             pass
-        info[f"eval/{traj_type}/gt_acc_dist_norm"] = acc_dist_norm
+        info[f"eval/{traj_type}/gt_acc_dist_norm"]     = acc_dist_norm
+        info[f"eval/{traj_type}/gt_ang_acc_dist_norm"] = ang_acc_dist_norm
 
         if record_video and len(frames):
             video_array = np.stack(frames).transpose(0, 3, 1, 2)
@@ -292,32 +304,33 @@ def main(cfg):
         print(f"\n[{i+1}/{len(traj_types)}] Evaluating trajectory: {traj}")
         info = evaluate(traj_type=traj, seed=i)
         all_info.update(info)
-        tracking_err  = info.get(f"eval/{traj}/stats.tracking_error", float("nan"))
-        err_max       = info.get(f"eval/{traj}/stats.tracking_error_max", float("nan"))  # [20260506]
-        ret           = info.get(f"eval/{traj}/stats.return",         float("nan"))
-        episode_len   = info.get(f"eval/{traj}/stats.episode_len",    float("nan"))
-        num_crashed    = int(info.get(f"eval/{traj}/num_crashed", 0))
-        # [0619新增] 平动扰动范数均值
-        gt_acc         = info.get(f"eval/{traj}/gt_acc_dist_norm", float("nan"))
-        summary_rows.append((traj, tracking_err, err_max, ret, episode_len, gt_acc, num_crashed))
+        tracking_err      = info.get(f"eval/{traj}/stats.tracking_error",     float("nan"))
+        err_max           = info.get(f"eval/{traj}/stats.tracking_error_max", float("nan"))
+        ret               = info.get(f"eval/{traj}/stats.return",             float("nan"))
+        episode_len       = info.get(f"eval/{traj}/stats.episode_len",        float("nan"))
+        num_crashed       = int(info.get(f"eval/{traj}/num_crashed", 0))
+        # [0615新增] 平动/转动扰动范数均值
+        gt_acc            = info.get(f"eval/{traj}/gt_acc_dist_norm",         float("nan"))
+        gt_ang_acc        = info.get(f"eval/{traj}/gt_ang_acc_dist_norm",     float("nan"))
+        summary_rows.append((traj, tracking_err, err_max, ret, episode_len, gt_acc, gt_ang_acc, num_crashed))
 
     # Log everything in one wandb step
     run.log(all_info)
 
-    # [0619更新] 打印汇总表格（含 error_max / gt_acc(m/s²) 列，与 eval_datt_6d.py 对齐）
-    print("\n" + "=" * 113)
+    # [0615] 打印汇总表格（含 gt_acc_norm / gt_ang_acc_norm 两列）
+    print("\n" + "=" * 120)
     print(
         f"{'Trajectory':<15}  {'tracking_error':>15}  {'error_max':>12}  "
-        f"{'return':>12}  {'episode_len':>12}  {'gt_acc(m/s²)':>13}  {'crashed':>9}"
+        f"{'return':>12}  {'episode_len':>12}  {'gt_acc(m/s²)':>13}  {'gt_ang_acc(r/s²)':>16}  {'crashed':>9}"
     )
-    print("-" * 113)
-    for traj, err, err_max, ret, ep_len, gt_acc, crashed in summary_rows:
+    print("-" * 120)
+    for traj, err, err_max, ret, ep_len, gt_acc, gt_ang_acc, crashed in summary_rows:
         n = base_env.num_envs
         print(
             f"{traj:<15}  {err:>15.4f}  {err_max:>12.4f}  "
-            f"{ret:>12.2f}  {ep_len:>12.1f}  {gt_acc:>13.4f}  {crashed:>4}/{n:<4}"
+            f"{ret:>12.2f}  {ep_len:>12.1f}  {gt_acc:>13.4f}  {gt_ang_acc:>16.4f}  {crashed:>4}/{n:<4}"
         )
-    print("=" * 113)
+    print("=" * 120)
 
     wandb.finish()
     simulation_app.close()

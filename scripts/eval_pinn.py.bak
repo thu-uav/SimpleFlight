@@ -1,11 +1,12 @@
 # =============================================================================
-# [修改记录 - 2026-05-19 18:52]
-# 修改文件：eval_pinn.py
-# 修改内容：跳过含断点的滑动窗口，与 L1 使用相同 valid_steps 集合：
-#   1. 加载数据时读取 "resets" key（兼容旧数据：无此 key 则全 False）
-#   2. 推理循环中，若窗口 [t-W, t) 内含任意断点（resets 为 True）则跳过
-#   3. 跳过的步不加入 preds/gts，保证与 L1 侧 valid_steps 一致
-# 原版备份：eval_pinn_202605191852.py
+# [版本说明 - 2026-05-19 18:52 之前的旧版本，已备份]
+# 文件：eval_pinn.py
+# 问题：推理循环 for t in range(window_size, total_steps) 不检查窗口
+#       [t-W, t) 内是否跨越 mid-episode reset 断点。
+#       跨断点的窗口时序特征无物理意义，导致 RMSE 偏高，且
+#       参与评估的时间步集合与 L1 侧不一致，两者比较不公平。
+# 修复：在 eval_pinn_202605191852.py 中，加载 resets mask，
+#       跳过含断点的窗口，与 L1 侧使用相同 valid_steps 集合。
 # =============================================================================
 import torch
 import torch.nn as nn
@@ -129,11 +130,6 @@ def evaluate_and_plot():
     test_dataset = torch.load(test_data_path)
     test_inputs  = test_dataset["inputs"].float().to(device)   # [Envs, Time, 19]
     test_labels  = test_dataset["labels"].float().to(device)   # [Envs, Time, 3]
-    # [2026-05-19 新增] 加载断点 mask（兼容旧数据：无 resets key 则全 False）
-    if "resets" in test_dataset:
-        test_resets = test_dataset["resets"].bool().to(device)  # [Envs, Time]
-    else:
-        test_resets = None
 
     # --- 3. 加载模型 ---
     model = PI_WAN(input_dim=19, output_dim=3).to(device)
@@ -162,22 +158,12 @@ def evaluate_and_plot():
 
         preds, gts = [], []
         print(f"[Env {env_idx}] Inferring {total_steps} steps ...")
-        # [2026-05-19 修改] 跳过含断点的窗口，与 L1 侧使用相同 valid_steps 集合
-        # 获取该 env 的断点 mask
-        if test_resets is not None:
-            env_resets = test_resets[env_idx]  # [Time] bool
-        else:
-            env_resets = None
         with torch.no_grad():
             for t in range(window_size, total_steps):
-                # [2026-05-19 新增] 若窗口 [t-W, t) 内含任意断点则跳过
-                # 跳过的步不加入 preds/gts，保证与 L1 侧 valid_steps 一致
-                if env_resets is not None and env_resets[t - window_size : t].any():
-                    continue
                 # [旧版] x_win = traj_inputs_norm[t - window_size : t, :].unsqueeze(0)
                 x_win  = traj_inputs[t - window_size : t, :].unsqueeze(0)  # [1, W, 19] 原始值，模型内部归一化
                 d_pred = model(x_win).squeeze(0)                            # [3]
-                d_gt   = traj_labels[t - 1, :]                              # [3]
+                d_gt   = traj_labels[t - 1, :]                                   # [3]
                 preds.append(d_pred.cpu().numpy())
                 gts.append(d_gt.cpu().numpy())
 

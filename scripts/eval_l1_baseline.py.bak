@@ -1,13 +1,12 @@
 # =============================================================================
-# [修改记录 - 2026-05-19 18:52]
-# 修改文件：eval_l1_baseline.py
-# 修改内容：按 resets mask 将每个 env 时间轴切成子段，统一评估规则：
-#   1. 加载数据时读取 "resets" key（兼容旧数据：无此 key 则全 False）
-#   2. 新增 build_sub_episodes() 函数：按断点划分子段列表
-#   3. evaluate_single_config() 改为按子段运行 L1，每段开头热身 (W-1) 步，
-#      热身期不计入 RMSE，与 eval_pinn.py 使用相同的 valid_steps 集合
-#   4. 新增参数 window_size（默认 5），与 PINN 侧保持一致
-# 原版备份：eval_l1_baseline_202605191852.py
+# [版本说明 - 2026-05-19 18:52 之前的旧版本，已备份]
+# 文件：eval_l1_baseline.py
+# 问题：evaluate_single_config() 对每个 env 从 t=0 连续运行到 t=T-1，
+#       不处理 mid-episode reset 断点。断点处速度瞬变被 L1 观测器误判为
+#       巨大扰动 spike，之后需约 5-10 步才能衰减，抬高断点附近的 RMSE。
+#       且未与 PINN 评估使用统一的"有效时间步"集合，公平性无法保证。
+# 修复：在 eval_l1_baseline_202605191852.py 中，按 resets mask 将时间轴
+#       切成子段，每子段开头热身 (W-1) 步后才参与评估，与 PINN 侧统一。
 # =============================================================================
 """
 Offline evaluation of the L1 disturbance observer as a baseline.
@@ -97,25 +96,6 @@ def decode_thrust(inputs_t: torch.Tensor):
     return (throttle + 1.0) / 2.0 * 15.0  # [m/s²]，与 PIDrate_FM 控制器对齐
 
 
-def build_sub_episodes(resets_env: torch.Tensor, T: int, window_size: int):
-    """
-    按 resets_env（形状 [T] bool）将时间轴切分为若干子段。
-    返回列表 [(seg_start, seg_end), ...]，仅保留长度 > window_size 的子段。
-    """
-    sub_eps = []
-    seg_start = 0
-    for t in range(T):
-        if resets_env[t]:  # t 是某 episode 末尾，t+1 起新 episode
-            seg_end = t + 1
-            if seg_end - seg_start > window_size:
-                sub_eps.append((seg_start, seg_end))
-            seg_start = t + 1
-    # 最后一段（没有被 done 终止的尾部）
-    if T - seg_start > window_size:
-        sub_eps.append((seg_start, T))
-    return sub_eps
-
-
 def evaluate_single_config(
     inputs: torch.Tensor,
     labels: torch.Tensor,
@@ -126,8 +106,6 @@ def evaluate_single_config(
     save_dir: str,
     device: str,
     tag: str = "",
-    resets: torch.Tensor = None,  # [2026-05-19 新增] [Envs, T] bool，None 表示无断点
-    window_size: int = 5,         # [2026-05-19 新增] 子段热身步数 = window_size-1
 ):
     N   = len(env_indices)
     T   = inputs.shape[1]
@@ -135,45 +113,26 @@ def evaluate_single_config(
     inp = inputs[env_indices]   # [N, T, 19]
     lbl = labels[env_indices]   # [N, T, 3]
 
-    # [2026-05-19 修改] 按子段运行 L1，热身期不参与评估，与 PINN 侧统一
-    # 若无 resets 信息（旧数据），退化为单段全量运行（原始行为）
-    preds_all = torch.full((N, T, 3), float("nan"), device=device)  # nan 标记未评估步
-    valid_mask = torch.zeros(N, T, dtype=torch.bool, device=device) # True=参与评估
+    # Initialise observer: vel_hat = v(1) = state at inputs[0]
+    v0_world, _ = decode_state(inp[:, 0, :], device)
+    observer = L1AccelerationObserver(
+        num_envs=N, dt=DT, gravity=GRAVITY,
+        As_value=As_value, alpha=alpha, clip_value=clip_value, device=device,
+    )
+    observer.reset(v_world=v0_world)
 
-    for i in range(N):
-        # 获取该 env 的断点 mask（若无则全 False，整段作为单子段）
-        if resets is not None:
-            resets_env = resets[env_indices[i]]  # [T] bool
-        else:
-            resets_env = torch.zeros(T, dtype=torch.bool, device=device)
+    preds_all = torch.zeros(N, T, 3, device=device)
 
-        sub_episodes = build_sub_episodes(resets_env, T, window_size)
+    for t in range(T):
+        v_world, R_bw = decode_state(inp[:, t, :], device)
+        # Thrust to propagate from v(t+1) toward v(t+2): use action at t+1
+        # At last step, reuse current action (predictor output not used for comparison)
+        t_next = min(t + 1, T - 1)
+        thrust_acc = decode_thrust(inp[:, t_next, :])
 
-        for (seg_start, seg_end) in sub_episodes:
-            seg_len = seg_end - seg_start
-            warmup = window_size - 1  # 热身步数，与 PINN 侧一致
-
-            # 子段起点初始化 L1 状态
-            v0_world_i, _ = decode_state(inp[[i], seg_start, :], device)
-            observer_i = L1AccelerationObserver(
-                num_envs=1, dt=DT, gravity=GRAVITY,
-                As_value=As_value, alpha=alpha, clip_value=clip_value, device=device,
-            )
-            observer_i.reset(v_world=v0_world_i)
-
-            for t_rel in range(seg_len):
-                t_abs = seg_start + t_rel
-                v_world_i, R_bw_i = decode_state(inp[[i], t_abs, :], device)
-                t_next = min(t_abs + 1, T - 1)
-                thrust_acc_i = decode_thrust(inp[[i], t_next, :])
-
-                a_hat_world_i = observer_i.step(v_world_i, R_bw_i, thrust_acc_i)
-                a_hat_body_i  = L1AccelerationObserver.world_to_body(a_hat_world_i, R_bw_i)
-
-                # 热身期结束后才记录
-                if t_rel >= warmup:
-                    preds_all[i, t_abs, :] = a_hat_body_i.squeeze(0)
-                    valid_mask[i, t_abs] = True
+        a_hat_world = observer.step(v_world, R_bw, thrust_acc)
+        a_hat_body  = L1AccelerationObserver.world_to_body(a_hat_world, R_bw)
+        preds_all[:, t, :] = a_hat_body
 
     preds_np = preds_all.cpu().numpy()
     gts_np   = lbl.cpu().numpy()
@@ -181,12 +140,9 @@ def evaluate_single_config(
     os.makedirs(save_dir, exist_ok=True)
     all_rmse = []
 
-    valid_mask_np = valid_mask.cpu().numpy()  # [N, T] bool
-
     for i, env_idx in enumerate(env_indices):
-        vm   = valid_mask_np[i]         # [T] bool，只取参与评估的步
-        pred = preds_np[i][vm]           # [valid_T, 3]
-        gt   = gts_np[i][vm]             # [valid_T, 3]
+        pred = preds_np[i]
+        gt   = gts_np[i]
 
         rmse_x  = math.sqrt(float(np.mean((gt[:, 0] - pred[:, 0]) ** 2)))
         rmse_y  = math.sqrt(float(np.mean((gt[:, 1] - pred[:, 1]) ** 2)))
@@ -194,8 +150,7 @@ def evaluate_single_config(
         rmse_3d = math.sqrt(float(np.mean(np.sum((pred - gt) ** 2, axis=1))))
         all_rmse.append({"env": env_idx, "x": rmse_x, "y": rmse_y, "z": rmse_z, "3d": rmse_3d})
 
-        vm         = valid_mask_np[i]
-        time_axis  = np.where(vm)[0] * DT  # 只取有效步的时间轴
+        time_axis  = np.arange(T) * DT
         axis_names = ["X", "Y", "Z"]
         rmse_vals  = [rmse_x, rmse_y, rmse_z]
 
@@ -276,11 +231,6 @@ def main():
     data        = torch.load(TEST_DATA_PATH)
     inputs_all  = data["inputs"].float().to(device)
     labels_all  = data["labels"].float().to(device)
-    # [2026-05-19 新增] 加载断点 mask（兼容旧数据：无 resets key 则全 False）
-    if "resets" in data:
-        resets_all = data["resets"].bool().to(device)  # [Envs, T]
-    else:
-        resets_all = None
     E, T, _     = inputs_all.shape
     print(f"Dataset shape: inputs={tuple(inputs_all.shape)}, labels={tuple(labels_all.shape)}")
 
@@ -296,8 +246,6 @@ def main():
     all_rmse = evaluate_single_config(
         inputs_all, labels_all, env_indices,
         AS_VALUE, ALPHA, CLIP_VALUE, SAVE_DIR, device,
-        resets=resets_all,   # [2026-05-19 新增] 断点 mask
-        window_size=5,       # [2026-05-19 新增] 与 PINN 侧一致的热身长度
     )
     summary_path = os.path.join(
         SAVE_DIR,

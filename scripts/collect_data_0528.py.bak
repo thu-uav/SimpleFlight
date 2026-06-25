@@ -36,7 +36,7 @@ from torchrl.envs.transforms import (
 )
 from tqdm import tqdm
 
-@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_collect_pinn0528")  # [0528 更新]
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_collect_pinn0504")
 def main(cfg):
     # 1. 强制覆盖配置，确保采集模式正确
     OmegaConf.register_new_resolver("eval", eval)
@@ -192,9 +192,9 @@ def main(cfg):
         # 训练侧 Dataset 用此 mask 过滤跨断点窗口
         "resets": done_mask.cpu(),
         "metadata": {
-            "features": ["v_body(3)", "w_body(3)", "R_flat(9)", "tau_ctrl_body(3)", "action_ctbr(4)"],  # [0528] 新增 tau_ctrl_body(3)
-            "labels": ["acc_dist_body(3)", "ang_acc_dist_body(3)"],  # [0528] 扩展到6D
-            "description": "Dataset for 6D PINN Disturbance Observer (Batch x Time x Feat)"  # [0528]
+            "features": ["v_body(3)", "w_body(3)", "R_flat(9)", "action_ctbr(4)"],
+            "labels": ["acc_res_body(3)"],
+            "description": "Dataset for PINN Disturbance Observer (3D Tensor: Batch x Time x Feat)"
         }
     }
     

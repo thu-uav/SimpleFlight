@@ -1,12 +1,15 @@
 # =============================================================================
-# [修改记录 - 2026-05-19]
-# 修改文件：train_pinn_0518.py
-# 修改内容：DroneDisturbanceDataset 过滤跨断点滑动窗口，消除时序污染和物理loss错误。
-#   1. __init__ 加载数据时读取 "resets" key（兼容旧数据：若无则全False）
-#   2. 删除 samples_per_env 线性索引，改为预建 valid_indices 列表
-#      (global_env, start_t) —— 仅保留 resets[g, start_t:start_t+W] 全False的窗口
-#   3. __getitem__ 改为从 self.valid_indices[idx] 取 (global_env_id, start_t)
-# 原版备份：train_pinn_20260519.py
+# [版本说明 - 2026-05-19 之前的旧版本，已备份]
+# 文件：train_pinn_0518.py
+# 问题：DroneDisturbanceDataset 的 __getitem__ 直接用线性 idx 推算
+#       (env_id, start_t)，未检查窗口 [start_t, start_t+W) 内是否存在
+#       mid-episode reset 断点。
+#       断点处：(1) TCN 时序输入混合两段不相关飞行；
+#               (2) 物理 loss 的 v_next=inputs[end_t] 可能是新 ep 初速度，
+#                   物理方程 v_next≠v_curr+dt*f(...) 导致梯度方向错误。
+# 修复：在 train_pinn_20260519.py 中加载 dataset 时读取 "resets" key，
+#       __init__ 末尾预建有效索引表（仅保留窗口内无断点的样本），
+#       __getitem__ 改为从 valid_indices 取 (global_env, start_t)。
 # =============================================================================
 #加入早停 调整wandb更新频率
 #并且修改了phyloss的计算，之前在计算真实的物理推力 (Newtons) throttle_normalized对控制
@@ -60,13 +63,7 @@ class DroneDisturbanceDataset(Dataset):
         if os.path.exists(data_path):
             loaded_data = torch.load(data_path)
             self.inputs = loaded_data["inputs"].float() 
-            self.labels = loaded_data["labels"].float()
-            # [2026-05-19 新增] 加载断点 mask；兼容旧数据（若无 resets key 则全 False）
-            if "resets" in loaded_data:
-                self._resets_raw = loaded_data["resets"].bool()
-            else:
-                total_envs_tmp, total_len_tmp = loaded_data["inputs"].shape[:2]
-                self._resets_raw = torch.zeros(total_envs_tmp, total_len_tmp, dtype=torch.bool)
+            self.labels = loaded_data["labels"].float() 
             print(f"[{mode.upper()}] Loaded raw data from {data_path}, Shape: {self.inputs.shape}")
         else:
             raise FileNotFoundError(f"找不到数据文件: {data_path}")
@@ -100,28 +97,18 @@ class DroneDisturbanceDataset(Dataset):
         # 执行归一化 (Z-Score)
         self.inputs = (self.inputs - self.mean) / self.std
         
-        # [2026-05-19 修改] 预建有效索引表，过滤窗口内含断点的样本
-        # 窗口 [start_t, start_t+W) 有效 <=> 该范围内 resets 全为 False
-        # （含 end_t-1 步，保证 v_next=inputs[end_t] 也在同一 episode 内）
-        valid_indices = []
-        for local_env in range(self.num_envs):
-            g = self.env_start_idx + local_env
-            for t in range(self.total_len - self.window_size - 1):
-                # 检查窗口 [t, t+W) 内无任何断点
-                if not self._resets_raw[g, t : t + self.window_size].any():
-                    valid_indices.append((g, t))
-        self.valid_indices = valid_indices
-        self.total_samples = len(valid_indices)
-        print(f"[{mode.upper()}] Effective Envs: {self.num_envs}, Valid Samples (after reset filter): {self.total_samples} "
-              f"(dropped: {self.num_envs * self.samples_per_env - self.total_samples})")
+        self.total_samples = self.num_envs * self.samples_per_env
+        print(f"[{mode.upper()}] Effective Envs: {self.num_envs}, Total Samples: {self.total_samples}")
 
     def __len__(self):
         return self.total_samples
 
     def __getitem__(self, idx):
-        # [2026-05-19 修改] 从预建的有效索引表中取 (env, start_t)，保证窗口内无断点
-        global_env_id, start_t = self.valid_indices[idx]
+        local_env_id = idx // self.samples_per_env
+        time_offset = idx % self.samples_per_env
+        global_env_id = self.env_start_idx + local_env_id
         
+        start_t = time_offset
         end_t = start_t + self.window_size 
         
         input_window = self.inputs[global_env_id, start_t:end_t, :]
@@ -298,8 +285,7 @@ def train_pipeline():
     )
 
     # --- 3. 准备数据 ---
-    data_file = "collected_data/dataset_20260520_2110/dataset_test_20260520_2110.pt" 
-    #collected_data/dataset_20260505_0156/dataset_test_20260505_0156.pt
+    data_file = "collected_data/dataset_20260505_0156/dataset_test_20260505_0156.pt" 
     #collected_data/dataset_20260316_0028/dataset_20260316_0028.pt
     
     train_dataset = DroneDisturbanceDataset(data_file, window_size=Config.WINDOW_SIZE, mode='train', split_ratio=Config.TRAIN_RATIO)

@@ -86,7 +86,7 @@ class EpisodeStats:
         return len(self._stats)
 
 
-@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train")
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_6d_noGT")  # [0626] 6D扰动 + 无GT oracle + Jacobian约束；"train"=普通Track；"train_datt0615"=DATT oracle
 def main(cfg):
     OmegaConf.register_new_resolver("eval", eval)
     OmegaConf.resolve(cfg)
