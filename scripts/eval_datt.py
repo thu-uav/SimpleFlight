@@ -24,7 +24,7 @@ import torch
 import numpy as np
 import wandb
 
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, open_dict
 
 from omni_drones import CONFIG_PATH, init_simulation_app
 from omni_drones.utils.torchrl import AgentSpec
@@ -81,7 +81,8 @@ ALL_TRAJ_TYPES = ["slow", "normal", "fast", "poly", "zigzag", "pentagram"]
 # Main
 # ---------------------------------------------------------------------------
 
-@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_datt")
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_datt0615")  
+#train_datt这个对应的是指向train_datt.yaml，这个的里面进一步根据task: TrackDATT0427 （对应到3d复合扰动）或者TrackDATT（对应到最早的叠加正弦扰动）
 def main(cfg):
     OmegaConf.register_new_resolver("eval", eval)
     OmegaConf.resolve(cfg)
@@ -92,6 +93,9 @@ def main(cfg):
     cfg.env.num_envs = eval_num_envs
 
     simulation_app = init_simulation_app(cfg)
+    # 自动为评估 run 加 eval_ 前缀，避免与训练 run 名字混淆
+    with open_dict(cfg):
+        cfg.wandb.run_name = "eval_" + cfg.wandb.run_name
     run = init_wandb(cfg)
     setproctitle(run.name)
     print(OmegaConf.to_yaml(cfg))
