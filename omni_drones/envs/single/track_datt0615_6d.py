@@ -1,10 +1,15 @@
 # =============================================================================
-# [版本说明 - 2026-06-14 之前的版本，已备份为 track_datt0427_0614.py.bak]
-# 本文件（track_datt0427.py）对应 TrackDATT0427 环境。
-# 该版本仅支持 3 维平动扰动加速度（世界系 m/s²）作为 GT oracle 输入。
-# info["gt_wind"] 维度为 (3,)，e_dim=3。
-# 无转动扰动子系统。
-# 如需 6D 扰动（平动+转动）版本，请使用 track_datt0615_6d.py（TrackDATT0615）。
+# [修改记录 - 2026-06-15]
+# 修改文件：track_datt0615_6d.py（基于 track_datt0427.py）
+# 原版备份：track_datt0427_0614.py.bak
+# 修改内容：
+#   1. e_dim: 3 → 6，GT oracle 输入扩展为 6D（平动3D + 转动3D）
+#   2. 新增转动扰动子系统（bias + Gauss-Markov + swing，体坐标系 rad/s²）
+#      通过 apply_forces_and_torques_at_pos 施加，结构与平动扰动完全对称
+#   3. episode_wind: [N,3] → [N,6]，包含 dist_acc + dist_ang_acc
+#   4. info["gt_wind"] 维度 (3,) → (6,)
+#   5. 新增 _reset_torque_disturbance / _update_torque_disturbance 方法
+#   6. 新增 quat_rotate 导入，用于体系→世界系力矩转换
 # =============================================================================
 """
 TrackDATT0427  ---  DATT 自适应基线环境（0427 扰动模型更新版）
@@ -27,6 +32,7 @@ TrackDATT0427  ---  DATT 自适应基线环境（0427 扰动模型更新版）
 """
 
 import torch
+from omni_drones.utils.torch import quat_rotate  # [0615 新增] 体系→世界系力矩转换
 
 from tensordict.tensordict import TensorDict, TensorDictBase
 from torchrl.data import UnboundedContinuousTensorSpec, CompositeSpec
@@ -34,10 +40,10 @@ from torchrl.data import UnboundedContinuousTensorSpec, CompositeSpec
 from .track import Track
 
 
-class TrackDATT0427(Track):
-    """DATT baseline environment（0427 扰动模型更新版）。
+class TrackDATT0615(Track):  # [0615] 原为 TrackDATT0427
+    """DATT baseline environment（0615 6D扰动版）。
     继承 :class:`Track`。
-    新增 composite 扰动模型（偏置 + GM随机 + 摆动正弦）。
+    在0427版基础上扩展转动扰动子系统，GT oracle输入为6D（平动+转动）。
     扰动模式通过 disturbance.mode 控制（见模块文档）。
     """
 
@@ -46,7 +52,10 @@ class TrackDATT0427(Track):
         self.include_gt_wind: bool = bool(cfg.task.get("include_gt_wind", True))
         self.wind_mode: str = str(cfg.task.get("wind_mode", "sinusoidal"))
         self.wind_max: float = float(cfg.task.get("wind_max", 1.0))
-        self.e_dim: int = 3
+        # [0617] e_dim 从 yaml 读取（默认 6）：
+#   e_dim=6  → policy 同时看到平动3D + 转动3D扰动（新方法）
+#   e_dim=3  → policy 只看平动3D扰动，转动扰动照样物理施加但策略不可见（对比基准）
+        self.e_dim: int = int(cfg.task.get("e_dim", 6))
 
         super().__init__(cfg, headless)
 
@@ -98,6 +107,35 @@ class TrackDATT0427(Track):
             self.dist_acc = torch.zeros(self.num_envs, 3, device=self.device)
             self.dist_force = torch.zeros(self.num_envs, 3, device=self.device)
 
+            # [0615 新增] 转动扰动子系统 buffer 初始化
+            torque_dist_cfg = dist_cfg.get("torque_disturbance", None)
+            self.torque_disturbance_enable = (
+                (torque_dist_cfg is not None) and torque_dist_cfg.get("enable", False)
+            )
+            if self.torque_disturbance_enable:
+                self.torque_dist_cfg         = torque_dist_cfg
+                self.torque_dist_clip        = torque_dist_cfg.get("clip_total", True)
+                self.torque_dist_max_train   = torque_dist_cfg.get("max_total_ang_acc_train", 3.0)
+                self.torque_dist_max_eval    = torque_dist_cfg.get("max_total_ang_acc_eval", 5.0)
+                self.torque_dist_yaw_scale   = torque_dist_cfg.get("yaw_scale", 0.4)
+                self.dist_torque_bias        = torch.zeros(self.num_envs, 3, device=self.device)
+                self.dist_torque_gm          = torch.zeros(self.num_envs, 3, device=self.device)
+                self.dist_torque_gm_sigma    = torch.zeros(self.num_envs, 1, device=self.device)
+                self.dist_torque_gm_tau      = torch.zeros(self.num_envs, 1, device=self.device)
+                self.dist_torque_gm_alpha    = torch.zeros(self.num_envs, 1, device=self.device)
+                self.dist_torque_swing_amp   = torch.zeros(self.num_envs, 3, device=self.device)
+                self.dist_torque_swing_freq  = torch.zeros(self.num_envs, 1, device=self.device)
+                self.dist_torque_swing_phase = torch.zeros(self.num_envs, 3, device=self.device)
+                self.dist_ang_acc            = torch.zeros(self.num_envs, 3, device=self.device)
+                self.J_diag = torch.tensor(
+                    [float(self.drone.inertia_xx),
+                     float(self.drone.inertia_yy),
+                     float(self.drone.inertia_zz)],
+                    device=self.device
+                )  # [3] 惯量对角元素（kg·m²）
+        else:
+            self.torque_disturbance_enable = False
+
     # ------------------------------------------------------------------
     def _set_specs(self):
         super()._set_specs()
@@ -123,7 +161,7 @@ class TrackDATT0427(Track):
             "policy_action": torch.stack(
                 [self.drone.action_spec] * self.drone.n, 0).to(self.device),
             "gt_wind": UnboundedContinuousTensorSpec(
-                (self.e_dim,), device=self.device),
+                (self.e_dim,), device=self.device),  # [0615] e_dim=6，含平动(3)+转动(3)
             # 扰动模型各分量（disturbance.enable=true 时填充，否则保持零）
             "disturbance_acc": UnboundedContinuousTensorSpec((3,), device=self.device),
             "disturbance_bias": UnboundedContinuousTensorSpec((3,), device=self.device),
@@ -149,6 +187,9 @@ class TrackDATT0427(Track):
         # 重置新扰动模型（sinsum / composite 模式）
         if self.disturbance_enable:
             self._reset_disturbance(env_ids)
+        # [0615 新增] 重置转动扰动参数
+        if hasattr(self, "torque_disturbance_enable") and self.torque_disturbance_enable:
+            self._reset_torque_disturbance(env_ids)
 
     # ------------------------------------------------------------------
     def _pre_sim_step(self, tensordict: TensorDictBase):
@@ -206,9 +247,20 @@ class TrackDATT0427(Track):
 
         # 更新 episode_wind（暴露给 policy 的 gt_wind 加速度，世界系）
         if self.disturbance_enable and self.dist_mode == "composite":
-            # composite 模式：用新扰动模型的总加速度作为 gt_wind
-            # 原值：self.wind_force（Track._pre_sim_step 计算的正弦风加速度）
-            self.episode_wind[:] = self.dist_acc
+            if self.e_dim == 6:
+                # [0617] e_dim=6：policy 同时看平动3D + 转动3D
+                if hasattr(self, "torque_disturbance_enable") and self.torque_disturbance_enable:
+                    self.episode_wind[:] = torch.cat(
+                        [self.dist_acc, self.dist_ang_acc], dim=-1
+                    )  # [N, 6]
+                else:
+                    self.episode_wind[:, :3] = self.dist_acc
+                    self.episode_wind[:, 3:] = 0.0
+            else:
+                # [0617] e_dim=3（对比基准）：policy 只看平动3D
+                # 转动扰动在 _pre_sim_step 中照样物理施加（apply_forces_and_torques_at_pos），
+                # 但不写入 episode_wind，策略无法感知
+                self.episode_wind[:] = self.dist_acc  # [N, 3]
 
         elif self.disturbance_enable and self.dist_mode == "sinsum":
             # sinsum 模式：wind_force 由 Track._pre_sim_step 设置
@@ -226,8 +278,8 @@ class TrackDATT0427(Track):
         if self.include_gt_wind:
             obs = td["agents"]["observation"]        # [N, 1, obs_dim]
             state = td["agents"]["state"]            # [N, state_dim]
-            gt_obs = self.episode_wind.unsqueeze(1)  # [N, 1, 3]
-            gt_state = self.episode_wind             # [N, 3]
+            gt_obs = self.episode_wind.unsqueeze(1)  # [N, 1, 6]（[0615] 原为 [N,1,3]）
+            gt_state = self.episode_wind             # [N, 6]（[0615] 原为 [N,3]）
             td["agents"]["observation"] = torch.cat([obs, gt_obs], dim=-1)
             td["agents"]["state"] = torch.cat([state, gt_state], dim=-1)
 
@@ -413,4 +465,135 @@ class TrackDATT0427(Track):
         # self.total_mass: [num_envs, 1, 1]（来自 Track.__init__）
         dist_force = self.total_mass.reshape(self.num_envs, 1, 1) * self.dist_acc.unsqueeze(1)
         # 原值：wind_forces = self.total_mass.reshape(N,1,1) * self.wind_force.unsqueeze(1)
-        self.drone.base_link.apply_forces(dist_force, is_global=True)
+        # [0615] 若转动扰动启用则同时施加力矩
+        if hasattr(self, "torque_disturbance_enable") and self.torque_disturbance_enable:
+            self._update_torque_disturbance()
+            tau_dist_body  = self.J_diag * self.dist_ang_acc          # [N, 3] 体系 N·m
+            tau_dist_world = quat_rotate(
+                self.drone.rot.squeeze(1), tau_dist_body
+            )                                                          # [N, 3] 世界系
+            self.drone.base_link.apply_forces_and_torques_at_pos(
+                dist_force,
+                tau_dist_world.unsqueeze(1).expand(self.num_envs, self.drone.n, 3),
+                is_global=True
+            )
+        else:
+            self.drone.base_link.apply_forces(dist_force, is_global=True)
+
+    # ------------------------------------------------------------------
+    # [0615 新增] 转动扰动方法（从 track_pinn_0528.py 移植）
+    # ------------------------------------------------------------------
+
+    def _reset_torque_disturbance(self, env_ids: torch.Tensor):
+        """重置指定环境的转动扰动参数（体坐标系，rad/s²）。结构与平动扰动完全对称。"""
+        if not self.torque_disturbance_enable:
+            return
+        n = len(env_ids)
+        device = self.device
+        cfg = self.torque_dist_cfg
+
+        if self.use_eval:
+            bias_range      = cfg["bias"].get("range_eval", [-2.5, 2.5])
+            gm_sigma_range  = cfg["gauss_markov"].get("sigma_range_eval", [0.8, 2.0])
+            swing_amp_range = cfg["swing"].get("amp_range_eval", [0.0, 2.0])
+        else:
+            bias_range      = cfg["bias"].get("range_train", [-1.5, 1.5])
+            gm_sigma_range  = cfg["gauss_markov"].get("sigma_range_train", [0.3, 1.0])
+            swing_amp_range = cfg["swing"].get("amp_range_train", [0.0, 1.0])
+
+        yaw_scale = self.torque_dist_yaw_scale
+
+        # bias
+        if cfg["bias"].get("enable", True):
+            self.dist_torque_bias[env_ids] = (
+                torch.rand(n, 3, device=device)
+                * (bias_range[1] - bias_range[0]) + bias_range[0]
+            )
+            self.dist_torque_bias[env_ids, 2] *= yaw_scale
+        else:
+            self.dist_torque_bias[env_ids] = 0.0
+
+        # Gauss-Markov
+        if cfg["gauss_markov"].get("enable", True):
+            sigma = (
+                torch.rand(n, 1, device=device)
+                * (gm_sigma_range[1] - gm_sigma_range[0]) + gm_sigma_range[0]
+            )
+            tau_range = cfg["gauss_markov"].get("tau_range", [0.3, 1.5])
+            tau = (
+                torch.rand(n, 1, device=device)
+                * (tau_range[1] - tau_range[0]) + tau_range[0]
+            )
+            self.dist_torque_gm_sigma[env_ids] = sigma
+            self.dist_torque_gm_tau[env_ids]   = tau
+            self.dist_torque_gm_alpha[env_ids] = torch.exp(-self.dt / tau)
+            if cfg["gauss_markov"].get("reset_to_zero", True):
+                self.dist_torque_gm[env_ids] = 0.0
+        else:
+            self.dist_torque_gm[env_ids] = 0.0
+
+        # swing
+        if cfg["swing"].get("enable", True):
+            def _rand_amp(n, device):
+                return (
+                    torch.rand(n, device=device)
+                    * (swing_amp_range[1] - swing_amp_range[0]) + swing_amp_range[0]
+                )
+            freq_range = cfg["swing"].get("freq_range", [0.3, 1.2])
+            freq = (
+                torch.rand(n, 1, device=device)
+                * (freq_range[1] - freq_range[0]) + freq_range[0]
+            )
+            use_rand_phase = cfg["swing"].get("random_phase", True)
+            def _rand_phase(n, device):
+                return 2.0 * torch.pi * torch.rand(n, device=device) if use_rand_phase else torch.zeros(n, device=device)
+
+            self.dist_torque_swing_amp[env_ids, 0]   = _rand_amp(n, device)
+            self.dist_torque_swing_amp[env_ids, 1]   = _rand_amp(n, device)
+            self.dist_torque_swing_amp[env_ids, 2]   = _rand_amp(n, device) * yaw_scale
+            self.dist_torque_swing_freq[env_ids]      = freq
+            self.dist_torque_swing_phase[env_ids, 0] = _rand_phase(n, device)
+            self.dist_torque_swing_phase[env_ids, 1] = _rand_phase(n, device)
+            self.dist_torque_swing_phase[env_ids, 2] = _rand_phase(n, device)
+        else:
+            self.dist_torque_swing_amp[env_ids]   = 0.0
+            self.dist_torque_swing_freq[env_ids]  = 0.0
+            self.dist_torque_swing_phase[env_ids] = 0.0
+
+
+    def _update_torque_disturbance(self):
+        """每步更新转动扰动角加速度（体坐标系，rad/s²）。结构与平动扰动完全对称。"""
+        if not self.torque_disturbance_enable:
+            return
+        cfg = self.torque_dist_cfg
+        yaw_scale = self.torque_dist_yaw_scale
+
+        # bias（episode 内不变）
+        a_bias = self.dist_torque_bias.clone()
+
+        # Gauss-Markov 更新
+        eps  = torch.randn_like(self.dist_torque_gm)
+        a_gm = (self.dist_torque_gm_alpha * self.dist_torque_gm
+                + self.dist_torque_gm_sigma * torch.sqrt(1.0 - self.dist_torque_gm_alpha ** 2) * eps)
+        self.dist_torque_gm[:] = a_gm
+
+        # 摆动正弦
+        t = (self.progress_buf.float() * self.dt).reshape(-1, 1)
+        a_swing = self.dist_torque_swing_amp * torch.sin(
+            2.0 * torch.pi * self.dist_torque_swing_freq * t + self.dist_torque_swing_phase
+        )
+
+        ang_acc = a_bias + a_gm + a_swing
+
+        # yaw 轴缩放（已在 reset 时各轴单独缩放，此处仅作防御性二次缩放）
+        ang_acc[:, 2] = ang_acc[:, 2] * yaw_scale
+
+        # clip 总范数
+        if self.torque_dist_clip:
+            max_acc = self.torque_dist_max_eval if self.use_eval else self.torque_dist_max_train
+            norm  = torch.linalg.norm(ang_acc, dim=-1, keepdim=True).clamp_min(1e-6)
+            scale = torch.clamp(max_acc / norm, max=1.0)
+            ang_acc = ang_acc * scale
+
+        self.dist_ang_acc[:] = ang_acc
+

@@ -1,0 +1,53 @@
+# =============================================================================
+# [修改记录 - 2026-07-02]
+# 6D GT oracle + selective Lipschitz baseline.
+# 基于 train_datt0615.yaml：
+#   - task=TrackDATT0615，策略观测完整 6D 扰动
+#   - TrackDATT0615 默认关闭 action smoothness
+#   - Jacobian/Lipschitz 正则排除 observation 最后 6 维扰动通道
+# =============================================================================
+headless: true
+use_local_usd: false
+
+sim: ${task.sim}
+env: ${task.env}
+
+model_dir: null
+record_video: true
+dist_horizontal_only: false
+
+total_frames: 1000_000_000
+max_iters: -1
+eval_interval: -1
+save_interval: 100
+seed: 0
+
+viewer:
+  resolution: [960, 720]
+  eye: [0., 2.0, 2.5]
+  lookat: [0., 0., 1.0]
+
+wandb:
+  group: ${oc.select:..task.name}
+  run_name: track_datt_6d_selective_lip_no_smooth
+  entity: chen_zongy-tsinghua-university
+  project: sim2real
+  mode: online
+  run_id:
+  monitor_gym: True
+  tags:
+
+defaults:
+  - task: TrackDATT0615
+  - algo: mappo
+  - _self_
+
+task:
+  traj_weighted_sampling: false
+
+algo:
+  entropy_coef: 0.01
+  clip_param: 0.1
+  actor:
+    jacobian_coef: 0.001
+    jacobian_exclude_last_dims: 6

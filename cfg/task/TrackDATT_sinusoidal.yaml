@@ -1,0 +1,52 @@
+# =============================================================================
+# [新建 - 2026-06-19] TrackDATT_sinusoidal.yaml
+# 用于复现 04-25_17-01 训练时的原始扰动环境：
+#   - 使用旧版 TrackDATT 类（sinusoidal wind，无 composite 扰动子系统）
+#   - wind_mode: sinusoidal，wind_max: 1.0（与04-25训练时 wandb config 一致）
+#   - disturbance.enable: false（关闭 composite，使 sinusoidal 路径生效）
+# 对比：
+#   TrackDATT0427.yaml / TrackDATT0615.yaml → composite扰动（~3.7 m/s²）
+#   TrackDATT_sinusoidal.yaml               → sinusoidal风扰动（~1~2 m/s²）
+# =============================================================================
+name: TrackDATT   # 使用旧版类，与04-25训练时一致
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+
+env:
+  num_envs: 4096
+  max_episode_length: 1000
+
+drone_model: Air
+force_sensor: false
+time_encoding: false
+wind: true
+
+latency: false
+latency_step: 1
+random_latency: true
+
+# ---- DATT-specific ----
+wind_mode: "sinusoidal"   # 8频率正弦叠加，与04-25训练一致
+wind_max: 1.0             # constant模式下每轴上限，sinusoidal模式下不生效
+include_gt_wind: true     # 将GT wind附加到obs（oracle输入）
+
+# ---- trajectory ----
+eval_traj: "slow"
+traj_type: "random"
+traj_vscale: 1.0
+yaw_scale: 0.2
+traj_preview: true
+
+# ---- reward ----
+reward_distance_scale: 5
+reward_effort_scale: 0.02
+penalize_spinning: false
+
+flatten_obs: true
+flatten_state: true
+
+# ---- disturbance：关闭 composite，使用旧 sinusoidal 路径 ----
+disturbance:
+  enable: false   # [关键] false=使用 wind_mode=sinusoidal，true=使用 composite

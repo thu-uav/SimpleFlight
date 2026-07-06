@@ -1,3 +1,8 @@
+# =============================================================================
+# [修改记录 - 2026-06-15]
+# 修改文件：train_datt0615.yaml（基于 train_datt.yaml）
+# 修改内容：task 改为 TrackDATT0615（6D GT oracle：平动+转动扰动）
+# =============================================================================
 headless: true
 use_local_usd: false
 
@@ -6,7 +11,8 @@ env: ${task.env}
 
 # model_dir: /root/SimpleFlight/scripts/outputs/track_datt/04-11_02-14/wandb/latest-run/files/checkpoint_1206124544.pt
 model_dir: null
-# /root/SimpleFlight/scripts/outputs/track_datt/04-25_17-01/wandb/latest-run/files/checkpoint_final.pt
+# model_dir: outputs/track_datt_6d/06-15_14-07/wandb/latest-run/files/checkpoint_final.pt
+#/root/SimpleFlight/scripts/outputs/track_datt/04-25_17-01/wandb/latest-run/files/checkpoint_final.pt
 #/root/SimpleFlight/scripts/outputs/track_datt/04-25_17-01/wandb/latest-run/files/checkpoint_209977344.pt
 #/root/SimpleFlight/scripts/outputs/track_datt/04-25_17-01/wandb/latest-run/files/checkpoint_final.pt
 #null
@@ -26,8 +32,7 @@ viewer:
 
 wandb:
   group: ${oc.select:..task.name}
-  run_name: track_datt
-  job_type: train
+  run_name: track_datt_6d  # [0626] 6D扰动 + Jacobian Lipschitz 约束  之前：run_name: track_datt_6d
   entity: chen_zongy-tsinghua-university
   project: sim2real
   mode: online
@@ -36,8 +41,8 @@ wandb:
   tags:
 
 defaults:
-  - task: TrackDATT0427   #这个是新的复合风扰动，只有加速度扰动
-  #    TrackDATT #这个是simple原本的叠加正弦扰动
+  - task: TrackDATT0615   # [0615] 6D GT oracle 版本（平动+转动扰动）
+  #  - task: TrackDATT0427  # 原3D版本
   - algo: mappo
   - _self_
 

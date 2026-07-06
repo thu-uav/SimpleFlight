@@ -1,0 +1,35 @@
+# 采集数据专用配置：使用 TrackPINN0528（复合扰动 + 转动扰动）环境
+headless: true
+use_local_usd: false
+sim: ${task.sim}
+env: ${task.env}
+
+# 标称策略 checkpoint（无扰动 Track 环境训练的理想控制器）
+model_dir: /root/SimpleFlight/scripts/outputs/track_None/12-15_01-22/wandb/latest-run/files/checkpoint_final.pt
+
+total_frames: 9000_000_000
+max_iters: -1
+eval_interval: -1
+save_interval: 100
+seed: 42
+
+viewer:
+  resolution: [960, 720]
+  eye: [0., 2.0, 2.5]
+  lookat: [0., 0., 1.0]
+
+wandb:
+  group: ${oc.select:..task.name}
+  run_name: collect_pinn0528
+  job_type: collect
+  entity: chen_zongy-tsinghua-university
+  project: sim2real
+  mode: disabled
+  run_id:
+  monitor_gym: True
+  tags:
+
+defaults:
+  - task: TrackPINN0528   # [0528] 使用含转动扰动的新环境
+  - algo: mappo
+  - _self_

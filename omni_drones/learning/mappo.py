@@ -294,8 +294,22 @@ class MAPPOPolicy(object):
 
         # 4. 计算 Jacobian 范数
         # jac 维度为 [Batch, Agent, Act_Dim, Obs_Dim]
-        # pow(2).sum() 计算 Frobenius 范数的平方
-        jacobian_loss = jac.pow(2).sum(dim=(-1, -2)).mean()
+        # jacobian_exclude_last_dims > 0 时，末尾维度视为扰动观测通道，
+        # 不纳入 Lipschitz/Jacobian 正则，避免压低扰动补偿增益。
+        exclude_last_dims = int(self.cfg.actor.get("jacobian_exclude_last_dims", 0))
+        obs_dim = jac.shape[-1]
+        if exclude_last_dims < 0:
+            raise ValueError(
+                f"jacobian_exclude_last_dims must be non-negative, got {exclude_last_dims}."
+            )
+        if exclude_last_dims >= obs_dim:
+            raise ValueError(
+                f"jacobian_exclude_last_dims={exclude_last_dims} must be smaller than obs_dim={obs_dim}."
+            )
+
+        jacobian_loss_full = jac.pow(2).sum(dim=(-1, -2)).mean()
+        jac_for_regularization = jac[..., : obs_dim - exclude_last_dims] if exclude_last_dims > 0 else jac
+        jacobian_loss = jac_for_regularization.pow(2).sum(dim=(-1, -2)).mean()
         jacobian_loss_mapped = torch.tanh(jacobian_loss / 5.0) * 5.0
         
         log_probs_old = batch[self.act_logps_name]
@@ -353,6 +367,8 @@ class MAPPOPolicy(object):
             "ESS": ess.item(),
             # 记录原始jacobian损失，观察网络的平滑程度
             "jacobian_loss_raw": jacobian_loss.item(),
+            "jacobian_loss_full_raw": jacobian_loss_full.item(),
+            "jacobian_exclude_last_dims": exclude_last_dims,
             # 记录加权损失，直接与 policy_loss 对比权重
             "jacobian_loss_weighted": weighted_jacobian
         }
@@ -631,5 +647,4 @@ class Critic(nn.Module):
         if len(self.output_shape) > 1:
             values = values.unflatten(-1, self.output_shape)
         return values, rnn_state
-
 

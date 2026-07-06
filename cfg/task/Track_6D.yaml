@@ -1,0 +1,22 @@
+# =============================================================================
+# [Baseline updated - 2026-07-01]
+# Original file backed up as:
+#   /root/SimpleFlight/cfg/task/Track_6D.yaml.20260701.backup
+#
+# Purpose:
+#   6D physical disturbance baseline without any GT disturbance observation.
+#   It inherits the current TrackDATT0615_smooth setup so disturbance magnitude,
+#   action smoothness, drone model, controller, and trajectory settings stay
+#   aligned with the current 6D oracle method.
+# =============================================================================
+defaults:
+  - TrackDATT0615_smooth
+  - _self_
+
+# Reuse the TrackDATT0615 environment implementation, but do not append gt_wind
+# to actor observation or critic state.
+include_gt_wind: false
+
+# Baseline runs use uniform poly/zigzag sampling, matching the latest ablation
+# setup instead of the earlier return-weighted sampler.
+traj_weighted_sampling: false

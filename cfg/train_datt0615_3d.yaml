@@ -1,0 +1,53 @@
+# =============================================================================
+# [新建 - 2026-06-17] train_datt0615_3d.yaml
+# 对比基准训练配置：
+#   物理环境与 train_datt0615.yaml 完全相同（平动+转动扰动均施加）
+#   唯一区别：e_dim=3，policy 只接收平动3D扰动作为 GT oracle 输入
+#
+# 对比关系：
+#   train_datt0615.yaml    → e_dim=6，policy 看 6D（平动+转动）  ← 新方法
+#   train_datt0615_3d.yaml → e_dim=3，policy 只看 3D（平动）     ← 对比基准
+#
+# 运行：python train_datt.py --config-name train_datt0615_3d
+# =============================================================================
+headless: true
+use_local_usd: false
+
+sim: ${task.sim}
+env: ${task.env}
+
+model_dir: null   # 从头训练，不加载旧 checkpoint
+
+record_video: true
+dist_horizontal_only: false
+
+total_frames: 1000_000_000
+max_iters: -1
+eval_interval: -1
+save_interval: 100
+seed: 0
+
+viewer:
+  resolution: [960, 720]
+  eye: [0., 2.0, 2.5]
+  lookat: [0., 0., 1.0]
+
+wandb:
+  group: ${oc.select:..task.name}
+  run_name: track_datt_3d   # wandb 区分用名
+  job_type: train
+  entity: chen_zongy-tsinghua-university
+  project: sim2real
+  mode: online
+  run_id:
+  monitor_gym: True
+  tags:
+
+defaults:
+  - task: TrackDATT0615_3D   # [0617] 6D物理扰动 + 3D oracle（对比基准）
+  - algo: mappo
+  - _self_
+
+algo:
+  entropy_coef: 0.01
+  clip_param: 0.1

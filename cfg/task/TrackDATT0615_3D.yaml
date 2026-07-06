@@ -1,10 +1,18 @@
 # =============================================================================
-# [版本说明 - 2026-06-14 之前的版本，已备份为 TrackDATT0427_0614.yaml.bak]
-# 本配置对应 TrackDATT0427 环境，仅包含 3D 平动扰动（无转动扰动子系统）。
-# GT oracle 输入 e_dim=3（世界系平动加速度）。
-# 如需 6D 扰动版本，请使用 TrackDATT0615.yaml（TrackDATT0615）。
+# [修改记录 - 2026-06-15]
+# 修改文件：TrackDATT0615.yaml（基于 TrackDATT0427.yaml）
+# 原版备份：TrackDATT0427_0614.yaml.bak
+# 修改内容：
+#   1. name 改为 TrackDATT0615
+#   2. 在 disturbance 块内新增 torque_disturbance 子节（转动扰动，体坐标系 rad/s²）
+#   3. GT oracle 输入扩展为 6D（e_dim=6，平动+转动）
 # =============================================================================
-name: TrackDATT0427   # 原值: TrackDATT
+name: TrackDATT0615   # 复用 TrackDATT0615 类；e_dim=3 使策略只观测平动扰动（对比基准）
+
+# [0617] 对比基准配置：e_dim=3，policy只接收平动3D扰动作为oracle输入
+# 转动扰动照样通过 apply_forces_and_torques_at_pos 施加，但策略看不见
+# 对应新方法（e_dim=6）使用 TrackDATT0615.yaml
+e_dim: 3
 # -----------------------------------------------------------------------
 # DATT GT-oracle baseline（0427 扰动模型更新版）
 # Phase 1: single end-to-end MAPPO policy with GT wind vector in obs.
@@ -93,10 +101,8 @@ disturbance:
   # 将所有分量求和后的总水平扰动范数进行截断
   # clip_total: false                    # 2026-05-23 之前（第一次设置）
   clip_total: true
-  # max_total_acc_train: 6.0   # m/s^2，总水平加速度截断上限（训练）（2026-06-28 之前）
-  max_total_acc_train: 4.0   # m/s^2，总水平加速度截断上限（训练）
-  # max_total_acc_eval:  6.0   # m/s^2，总水平加速度截断上限（评估）（2026-06-28 之前）
-  max_total_acc_eval:  5.0   # m/s^2，总水平加速度截断上限（评估）
+  max_total_acc_train: 6.0   # m/s^2，总水平加速度截断上限（训练）
+  max_total_acc_eval:  6.0   # m/s^2，总水平加速度截断上限（评估）
 
   # ============================================================
   # [mode: sinsum] 原有的多频率正弦叠加参数
@@ -115,36 +121,60 @@ disturbance:
   bias:
     enable: true
     # range_train: [-2.0, 2.0]   # m/s^2，每轴独立均匀采样（2026-05-23 之前，第一次设置）
-    # range_train: [-3.5, 3.5]   # m/s^2，每轴独立均匀采样（2026-06-28 之前）
-    range_train: [-2.0, 2.0]   # m/s^2，每轴独立均匀采样
+    range_train: [-3.5, 3.5]   # m/s^2，每轴独立均匀采样
     # range_eval:  [-2.0, 2.0]   # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
-    # range_eval:  [-3.5, 3.5]   # m/s^2，与训练相同（2026-06-28 之前）
-    range_eval:  [-3.0, 3.0]   # m/s^2，评估时使用更强持续扰动
+    range_eval:  [-3.5, 3.5]   # m/s^2，与训练相同
 
   # 分量 2：Gauss-Markov随机扰动
   # a_gm[k+1] = alpha * a_gm[k] + sigma * sqrt(1-alpha^2) * eps
   gauss_markov:
     enable: true
     # sigma_range_train: [0.2, 0.8]   # m/s^2，稳态标准差（2026-05-23 之前，第一次设置）
-    # sigma_range_train: [0.3, 1.5]   # m/s^2，稳态标准差（2026-06-28 之前）
-    sigma_range_train: [0.15, 0.7]   # m/s^2，稳态标准差
+    sigma_range_train: [0.3, 1.5]   # m/s^2，稳态标准差
     # sigma_range_eval:  [0.2, 0.8]   # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
-    # sigma_range_eval:  [0.3, 1.5]   # m/s^2，与训练相同（2026-06-28 之前）
-    sigma_range_eval:  [0.3, 1.0]   # m/s^2，评估时使用更强阵风
-    # tau_range: [0.5, 2.0]           # 秒，相关时间（2026-06-28 之前）
-    tau_range: [0.8, 3.0]           # 秒，相关时间
+    sigma_range_eval:  [0.3, 1.5]   # m/s^2，与训练相同
+    tau_range: [0.5, 2.0]           # 秒，相关时间
     reset_to_zero: true
 
   # 分量 3：摆动正弦（悬挂负载钟摆模型）
   # a_swing_xy(t) = A_xy * sin(2*pi*f_s*t + phi_xy)
   swing:
-    enable: false
+    enable: true
     # amp_range_train: [0.0, 0.5]    # m/s^2，每轴的幅值（2026-05-23 之前，第一次设置）
-    # amp_range_train: [0.0, 1.0]    # m/s^2，每轴的幅值（2026-06-28 之前）
-    amp_range_train: [0.0, 0.5]    # m/s^2，每轴的幅值
+    amp_range_train: [0.0, 1.0]    # m/s^2，每轴的幅值
     # amp_range_eval:  [0.0, 0.5]    # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
-    # amp_range_eval:  [0.0, 1.0]    # m/s^2，与训练相同（2026-06-28 之前）
-    amp_range_eval:  [0.0, 0.8]    # m/s^2，评估时使用更强摆动
+    amp_range_eval:  [0.0, 1.0]    # m/s^2，与训练相同
     # freq_range: [0.3, 1.2]         # Hz，类似钟摆的频率范围（2026-05-23 之前，第一次设置）
     freq_range: [0.3, 1.5]         # Hz，类似钟摆的频率范围
     random_phase: true             # phi ~ U(0, 2*pi)
+
+  # [0615 新增] 转动扰动子系统（体坐标系，单位 rad/s²）
+  torque_disturbance:
+    enable: true
+
+    # yaw 轴缩放因子（yaw 惯量大，需降低扰动幅值）
+    yaw_scale: 0.4
+
+    # 总范数 clip
+    clip_total: true
+    max_total_ang_acc_train: 3.0   # 训练时最大角加速度 (rad/s²)
+    max_total_ang_acc_eval:  3.0   # 评估时允许更大扰动
+
+    bias:
+      enable: true
+      range_train: [-1.5, 1.5]
+      range_eval:   [-1.5, 1.5]  #[-2.5, 2.5]
+
+    gauss_markov:
+      enable: true
+      sigma_range_train: [0.3, 1.0]
+      sigma_range_eval:  [0.3, 1.0] #[0.8, 2.0]
+      tau_range: [0.3, 1.5]
+      reset_to_zero: true
+
+    swing:
+      enable: true
+      amp_range_train: [0.0, 1.0]
+      amp_range_eval:  [0.0, 1.0]  #[0.0, 2.0]
+      freq_range: [0.3, 1.2]
+      random_phase: true

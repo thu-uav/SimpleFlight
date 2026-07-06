@@ -1,0 +1,12 @@
+# Smoothness-on ablation for TrackDATT0615_3D.
+# Physical disturbance remains 6D, but the policy observes only the 3D
+# translational GT disturbance.
+defaults:
+  - TrackDATT0615_3D
+  - _self_
+
+traj_weighted_sampling: false
+
+reward_action_smoothness_weight_init: 2.0
+reward_action_smoothness_weight_lr: 0.0005
+reward_smoothness_max: 2.0

@@ -1,8 +1,20 @@
+# =============================================================================
+# [修改记录 - 2026-05-28]
+# 修改文件：track_pinn_0528.py（基于 track_pinn_0504.py）
+# 修改内容：
+#   1. 新增转动扰动子系统（bias + Gauss-Markov + swing，体坐标系 rad/s²）
+#      通过 apply_forces_and_torques_at_pos 施加（世界系），与平动扰动结构完全对称
+#   2. gt_disturbance: 3D → 6D（acc_dist_body(3) + ang_acc_dist_body(3)）
+#   3. pinn_features:  15D → 18D（v_body+w_body+R_flat+tau_ctrl_body）
+#   4. 新增 _reset_torque_disturbance / _update_torque_disturbance 方法
+# 原版备份：track_pinn_0504_0528.py
+# =============================================================================
+#这个代码是再track.py基础上修改出来的用来采集数据的环境
 from functorch import vmap
 
 import omni.isaac.core.utils.torch as torch_utils
 import omni_drones.utils.kit as kit_utils
-from omni_drones.utils.torch import euler_to_quaternion
+from omni_drones.utils.torch import euler_to_quaternion, quat_rotate_inverse, quat_rotate  # [新增] 引入坐标转换函数；[0528] 新增 quat_rotate 用于体系→世界系力矩转换
 import omni.isaac.core.utils.prims as prim_utils
 import torch
 import torch.distributions as D
@@ -22,7 +34,8 @@ from ..utils.lemniscate import Lemniscate
 import collections
 import numpy as np
 
-class Track(IsaacEnv):
+# [修改] 类名改为 TrackPINN
+class TrackPINN0528(IsaacEnv):  # [0528] 原为 TrackPINN0504
     def __init__(self, cfg, headless):
         self.reset_thres = cfg.task.reset_thres
         self.reward_acc_weight_init = cfg.task.reward_acc_weight_init
@@ -47,7 +60,6 @@ class Track(IsaacEnv):
         assert self.future_traj_steps > 0
         self.wind = cfg.task.wind
         self.use_eval = cfg.task.use_eval
-        self.eval_no_reset = cfg.task.get("eval_no_reset", False)  # [20260506] eval 时禁用所有提前 reset，强制跑满
         self.num_drones = 1
         self.use_rotor2critic = cfg.task.use_rotor2critic
         self.action_history_step = cfg.task.action_history_step
@@ -63,72 +75,43 @@ class Track(IsaacEnv):
 
         self.drone.initialize()
         # ========================================================
-        # 新增：读取每个环境的整机总质量，形状统一为 [num_envs, 1]
-        # 说明：
-        # self.drone._view.get_body_masses() 形状通常是 [num_envs, num_bodies]
-        # 对最后一个维度求和后得到每个环境的总质量 [num_envs]
-        # 再 unsqueeze(-1) 变成 [num_envs, 1]
-        # 这样后面可以和 [num_envs, 3] 的风加速度直接广播相乘
+        # 新增：读取每个环境的整机总质量，形状为 [num_envs, 1]
+        # 用于：
+        # 1. 风加速度 -> 风力 的换算
+        # 2. drag force -> drag acceleration 标签 的换算
         # ========================================================
         self.total_mass = self.drone._view.get_body_masses().reshape(self.num_envs, -1).sum(-1, keepdim=True)  # [num_envs, 1]
 
-        print("===== Track mass check =====")
+        print("===== TrackPINN mass check =====")
         print("air.yaml mass -> self.drone.mass:", self.drone.mass)
         print("self.drone.MASS_0:", self.drone.MASS_0)
         print("self.drone.masses[0]:", self.drone.masses[0])
         print("base_link.get_masses()[0]:", self.drone.base_link.get_masses()[0])
         print("body masses sum env0:", self.drone._view.get_body_masses()[0].sum())
-        print("self.total_mass shape:", self.total_mass.shape)
-        print("self.total_mass[0]:", self.total_mass[0])
-        print("============================")
+        print("===============================")
 
         randomization = self.cfg.task.get("randomization", None)
         if randomization is not None:
             if "drone" in self.cfg.task.randomization:
                 self.drone.setup_randomization(self.cfg.task.randomization["drone"])
 
-        # [2026-05-06 重构] 原旧 sinsum 与 composite 两段独立 if，存在双重施力 bug，
-        # 统一为 wind 作为总开关，disturbance.mode 决定类型，移除 enable 参数。
-        # 原代码已注释保留如下：
-        # if self.wind:  # 旧 sinsum buffer 初始化
-        #     if randomization is not None:
-        #         if "wind" in self.cfg.task.randomization:
-        #             cfg = self.cfg.task.randomization["wind"]
-        #             wind_intensity_scale = cfg['train'].get("intensity", None)
-        #             self.wind_intensity_low = wind_intensity_scale[0]
-        #             self.wind_intensity_high = wind_intensity_scale[1]
-        #     else:
-        #         self.wind_intensity_low = 0
-        #         self.wind_intensity_high = 2
-        #     self.wind_w = torch.zeros(self.num_envs, 3, 8, device=self.device)
-        #     self.wind_i = torch.zeros(self.num_envs, 1, device=self.device)
-        # dist_cfg = cfg.task.get("disturbance", None)
-        # self.disturbance_enable = (dist_cfg is not None) and dist_cfg.get("enable", False)
-        # if self.disturbance_enable:  # 旧 composite/新模型 buffer 初始化（独立于 wind）
-        #     ...（见 git history）
-        if self.wind:
-            # wind=True 时统一初始化扰动模型
-            # mode 由 disturbance.mode 决定，默认 "sinsum"（向后兼容）
-            dist_cfg = self.cfg.task.get("disturbance", {}) or {}
+        # 复合扰动模型初始化
+        dist_cfg = cfg.task.get("disturbance", None)
+        self.disturbance_enable = (dist_cfg is not None) and dist_cfg.get("enable", False)
+        if self.disturbance_enable:
             self.dist_cfg = dist_cfg
-            self.dist_mode = dist_cfg.get("mode", "sinsum")
+            self.dist_mode = dist_cfg.get("mode", "composite")
             self.dist_horizontal_only = dist_cfg.get("horizontal_only", True)
             self.dist_clip_total = dist_cfg.get("clip_total", True)
             self.dist_max_acc_train = dist_cfg.get("max_total_acc_train", 3.0)
             self.dist_max_acc_eval = dist_cfg.get("max_total_acc_eval", 3.5)
-            self.dist_max_acc = self.dist_max_acc_eval if self.use_eval else self.dist_max_acc_train
-            self.dist_acc = torch.zeros(self.num_envs, 3, device=self.device)
-            self.dist_force = torch.zeros(self.num_envs, 3, device=self.device)
-
+            self.dist_max_acc = self.dist_max_acc_train if not self.use_eval else self.dist_max_acc_eval
             if self.dist_mode == "sinsum":
-                if randomization is not None and "wind" in self.cfg.task.get("randomization", {}):
-                    wind_cfg = self.cfg.task.randomization["wind"]
-                    intensity_range = wind_cfg['train'].get("intensity", [0.0, 2.0])
-                else:
-                    intensity_range = dist_cfg.get("sinsum", {}).get("intensity_range", [0.0, 2.0])
-                self.dist_intensity_low = intensity_range[0]
+                sinsum_cfg = dist_cfg.get("sinsum", {})
+                intensity_range = sinsum_cfg.get("intensity_range", [0.0, 2.0])
+                self.dist_intensity_low  = intensity_range[0]
                 self.dist_intensity_high = intensity_range[1]
-                self.dist_num_freqs = dist_cfg.get("sinsum", {}).get("num_freqs", 8)
+                self.dist_num_freqs = sinsum_cfg.get("num_freqs", 8)
                 self.wind_w = torch.zeros(self.num_envs, 3, self.dist_num_freqs, device=self.device)
                 self.wind_i = torch.zeros(self.num_envs, 1, device=self.device)
             elif self.dist_mode == "composite":
@@ -140,6 +123,36 @@ class Track(IsaacEnv):
                 self.dist_swing_amp = torch.zeros(self.num_envs, 3, device=self.device)
                 self.dist_swing_freq = torch.zeros(self.num_envs, 1, device=self.device)
                 self.dist_swing_phase = torch.zeros(self.num_envs, 3, device=self.device)
+            self.dist_acc = torch.zeros(self.num_envs, 3, device=self.device)
+            self.dist_force = torch.zeros(self.num_envs, 3, device=self.device)
+
+            # [0528 新增] 转动扰动子系统初始化（仅在 composite 模式下有效）
+            torque_dist_cfg = dist_cfg.get("torque_disturbance", None)
+            self.torque_disturbance_enable = (torque_dist_cfg is not None) and torque_dist_cfg.get("enable", False)
+            if self.torque_disturbance_enable:
+                self.torque_dist_cfg         = torque_dist_cfg
+                self.torque_dist_clip        = torque_dist_cfg.get("clip_total", True)
+                self.torque_dist_max_train   = torque_dist_cfg.get("max_total_ang_acc_train", 3.0)
+                self.torque_dist_max_eval    = torque_dist_cfg.get("max_total_ang_acc_eval", 5.0)
+                self.torque_dist_yaw_scale   = torque_dist_cfg.get("yaw_scale", 0.4)
+                self.dist_torque_bias        = torch.zeros(self.num_envs, 3, device=self.device)
+                self.dist_torque_gm          = torch.zeros(self.num_envs, 3, device=self.device)
+                self.dist_torque_gm_sigma    = torch.zeros(self.num_envs, 1, device=self.device)
+                self.dist_torque_gm_tau      = torch.zeros(self.num_envs, 1, device=self.device)
+                self.dist_torque_gm_alpha    = torch.zeros(self.num_envs, 1, device=self.device)
+                self.dist_torque_swing_amp   = torch.zeros(self.num_envs, 3, device=self.device)
+                self.dist_torque_swing_freq  = torch.zeros(self.num_envs, 1, device=self.device)
+                self.dist_torque_swing_phase = torch.zeros(self.num_envs, 3, device=self.device)
+                self.dist_ang_acc            = torch.zeros(self.num_envs, 3, device=self.device)
+                # 惯量对角元素（kg·m²），用于 τ_dist = J * α_dist 力矩换算
+                self.J_diag = torch.tensor(
+                    [float(self.drone.inertia_xx),
+                     float(self.drone.inertia_yy),
+                     float(self.drone.inertia_zz)],
+                    device=self.device
+                )  # [3]
+        else:
+            self.torque_disturbance_enable = False
 
         self.init_rpy_dist = D.Uniform(
             torch.tensor([-.2, -.2, 0.], device=self.device) * torch.pi,
@@ -167,7 +180,43 @@ class Track(IsaacEnv):
 
         # eval
         if self.use_eval:
-            self._apply_eval_traj()
+            self.init_rpy_dist = D.Uniform(
+                torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
+                torch.tensor([0., 0., 0.], device=self.device) * torch.pi
+            )
+            if self.eval_traj == 'poly':
+                self.ref = ChainedPolynomial(num_trajs=self.num_envs,
+                                        scale=2.5,
+                                        use_y=True,
+                                        min_dt=1.5,
+                                        max_dt=4.0,
+                                        degree=5,
+                                        origin=self.origin,
+                                        device=self.device)
+            elif self.eval_traj == 'zigzag':
+                self.ref = RandomZigzag(num_trajs=self.num_envs,
+                                    max_D=[1.0, 1.0, 0.0],
+                                    min_dt=1.0,
+                                    max_dt=1.5,
+                                    diff_axis=True,
+                                    origin=self.origin,
+                                    device=self.device)
+            elif self.eval_traj == 'pentagram':
+                self.ref = NPointedStar(num_trajs=self.num_envs,
+                                num_points=5,
+                                origin=self.origin,
+                                speed=1.0,
+                                radius=0.7,
+                                device=self.device)
+            elif self.eval_traj == 'slow':
+                self.ref = Lemniscate(T=15.0, origin=self.origin, device=self.device)
+                self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 15.0 / 4
+            elif self.eval_traj == 'normal':
+                self.ref = Lemniscate(T=5.5, origin=self.origin, device=self.device)
+                self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 5.5 / 4
+            elif self.eval_traj == 'fast':
+                self.ref = Lemniscate(T=3.5, origin=self.origin, device=self.device)
+                self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 3.5 / 4
 
         self.last_linear_v = torch.zeros(self.num_envs, 1, device=self.device)
         self.last_angular_v = torch.zeros(self.num_envs, 1, device=self.device)
@@ -183,62 +232,14 @@ class Track(IsaacEnv):
         self.draw = _debug_draw.acquire_debug_draw_interface()
         
         self.prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
-        # self.prev_prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
-        self.count = 0 # episode of RL training
-
-        # [多任务加权采样] 记录两种轨迹类型（0=poly, 1=zigzag）的历史平均 return (EMA)
-        # 用于在 reset 时动态调整采样权重：return 低的轨迹类型获得更高的训练概率
-        self.traj_weighted_sampling = bool(cfg.task.get("traj_weighted_sampling", True))
-        self.traj_ema_return = torch.full((2,), -500.0, device=self.device)  # 初始值相同，无偏好
-        self.traj_ema_alpha = float(cfg.task.get("traj_ema_alpha", 0.02))   # 越小越平滑，越大越跟紧近期表现
-        self.traj_sample_temp = float(cfg.task.get("traj_sample_temp", 500.0))  # 越大→接近 50/50；越小→集中于差的轨迹
-        self.traj_sample_min_w = float(cfg.task.get("traj_sample_min_w", 0.2))   # 最低采样概率，避免某类型完全被饿死
-
-    def _apply_eval_traj(self):
-        """Rebuild self.ref for the current eval_traj type. Call after setting eval_traj."""
-        self.use_eval = True
-        # Reset trajectory phase before switching types so non-periodic eval
-        # trajectories do not inherit the previous lemniscate phase offset.
-        self.traj_t0 = torch.zeros(self.num_envs, 1, device=self.device)
-        self.init_rpy_dist = D.Uniform(
-            torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
-            torch.tensor([0., 0., 0.], device=self.device) * torch.pi
-        )
-        if self.eval_traj == 'poly':
-            self.ref = ChainedPolynomial(num_trajs=self.num_envs,
-                                    scale=2.5,
-                                    use_y=True,
-                                    min_dt=1.5,
-                                    max_dt=4.0,
-                                    degree=5,
-                                    origin=self.origin,
-                                    device=self.device)
-        elif self.eval_traj == 'zigzag':
-            self.ref = RandomZigzag(num_trajs=self.num_envs,
-                                max_D=[1.0, 1.0, 0.0],
-                                min_dt=1.0,
-                                max_dt=1.5,
-                                diff_axis=True,
-                                origin=self.origin,
-                                device=self.device)
-        elif self.eval_traj == 'pentagram':
-            self.ref = NPointedStar(num_trajs=self.num_envs,
-                            num_points=5,
-                            origin=self.origin,
-                            speed=1.0,
-                            radius=0.7,
-                            device=self.device)
-        elif self.eval_traj == 'slow':
-            self.ref = Lemniscate(T=15.0, origin=self.origin, device=self.device)
-            self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 15.0 / 4
-        elif self.eval_traj == 'normal':
-            self.ref = Lemniscate(T=5.5, origin=self.origin, device=self.device)
-            self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 5.5 / 4
-        elif self.eval_traj == 'fast':
-            self.ref = Lemniscate(T=3.5, origin=self.origin, device=self.device)
-            self.traj_t0 = torch.ones(self.num_envs, 1, device=self.device) * 3.5 / 4
-        else:
-            raise ValueError(f"Unknown eval_traj: {self.eval_traj}")
+        self.count = 0 
+        # ========================================================
+        # [新增] 打印无人机物理参数，用于提取 PINN 需要的最大推力和质量
+        # ========================================================
+        print(f"=====================================")
+        print(f"无人机质量: {self.drone.MASS_0}")
+        print(f"最大总推力: {self.drone.KF_0.sum()}")
+        print(f"=====================================")
 
     def _design_scene(self):
         drone_model = MultirotorBase.REGISTRY[self.cfg.task.drone_model]
@@ -246,7 +247,6 @@ class Track(IsaacEnv):
         self.drone: MultirotorBase = drone_model(cfg=cfg)
 
         if self.use_local_usd:
-            # use local usd resources
             usd_path = os.path.join(os.path.dirname(__file__), os.pardir, "assets", "default_environment.usd")
             kit_utils.create_ground_plane(
                 "/World/defaultGroundPlane",
@@ -256,7 +256,6 @@ class Track(IsaacEnv):
                 usd_path=usd_path
             )
         else:
-            # use online usd resources
             kit_utils.create_ground_plane(
                 "/World/defaultGroundPlane",
                 static_friction=1.0,
@@ -268,17 +267,15 @@ class Track(IsaacEnv):
     
     def _set_specs(self):
         if self.use_ab_wolrd_pos:
-            drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 # pos, linear vel, body rate, heading, lateral, up
+            drone_state_dim = 3 + 3 + 3 + 3 + 3 + 3 
         else:
-            # drone_state_dim = 4 + 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
-            drone_state_dim = 3 + 3 + 3 + 3 # quat, linear vel, heading, lateral, up
+            drone_state_dim = 3 + 3 + 3 + 3 
         obs_dim = drone_state_dim + 3 * self.future_traj_steps
         
         self.time_encoding_dim = self.cfg.task.time_encoding_dim
         if self.time_encoding:
             obs_dim += self.time_encoding_dim
         
-        # action history
         self.action_history = self.cfg.task.action_history_step if self.cfg.task.use_action_history else 0
         self.action_history_buffer = collections.deque(maxlen=self.action_history)
 
@@ -293,7 +290,7 @@ class Track(IsaacEnv):
         self.observation_spec = CompositeSpec({
             "agents": {
                 "observation": UnboundedContinuousTensorSpec((1, obs_dim)),
-                "state": UnboundedContinuousTensorSpec((state_dim)), # add motor speed
+                "state": UnboundedContinuousTensorSpec((state_dim)), 
             }
         }).expand(self.num_envs).to(self.device)
         self.action_spec = CompositeSpec({
@@ -318,7 +315,6 @@ class Track(IsaacEnv):
             "episode_len": UnboundedContinuousTensorSpec(1),
             "tracking_error": UnboundedContinuousTensorSpec(1),
             "tracking_error_ema": UnboundedContinuousTensorSpec(1),
-            "tracking_error_max": UnboundedContinuousTensorSpec(1),  # [20260506] per-episode max distance
             "action_error_order1_mean": UnboundedContinuousTensorSpec(1),
             "action_error_order1_max": UnboundedContinuousTensorSpec(1),
             "action_error_order2_mean": UnboundedContinuousTensorSpec(1),
@@ -350,18 +346,22 @@ class Track(IsaacEnv):
             "angular_jerk_mean": UnboundedContinuousTensorSpec(1),
             "linear_snap_mean": UnboundedContinuousTensorSpec(1),
             "obs_range": UnboundedContinuousTensorSpec(1),
-            # [多任务加权采样] 每个 env 当前分配的轨迹类型权重（0=poly, 1=zigzag）
-            "traj_style": UnboundedContinuousTensorSpec(1),         # 当前轨迹类型(0/1)
-            "traj_w_poly": UnboundedContinuousTensorSpec(1),        # poly 采样权重
-            "traj_w_zigzag": UnboundedContinuousTensorSpec(1),      # zigzag 采样权重
         }).expand(self.num_envs).to(self.device)
+        
+        # [修改 1] 在 info_spec 中注册 PINN 需要的通道
         info_spec = CompositeSpec({
             "drone_state": UnboundedContinuousTensorSpec((self.drone.n, 13), device=self.device),
             "prev_action": torch.stack([self.drone.action_spec] * self.drone.n, 0).to(self.device),
             "policy_action": torch.stack([self.drone.action_spec] * self.drone.n, 0).to(self.device),
-            # "prev_prev_action": torch.stack([self.drone.action_spec] * self.drone.n, 0).to(self.device),
+            
+            # [0528 扩展] gt_disturbance: 6D = acc_dist_body(3) + ang_acc_dist_body(3)（体坐标系）
+            "gt_disturbance": UnboundedContinuousTensorSpec((6,), device=self.device),
+
+            # [0528 扩展] pinn_features: 18D = v_body(3)+w_body(3)+R_flat(9)+tau_ctrl_body(3)
+            "pinn_features": UnboundedContinuousTensorSpec((18,), device=self.device),
+            
         }).expand(self.num_envs).to(self.device)
-        # info_spec = self.drone.info_spec.to(self.device)
+        
         self.observation_spec["info"] = info_spec
         self.observation_spec["stats"] = stats_spec
         self.info = info_spec.zero()
@@ -369,32 +369,20 @@ class Track(IsaacEnv):
 
         self.random_latency = self.cfg.task.random_latency
         self.latency = self.cfg.task.latency_step if self.cfg.task.latency else 0
-        # self.obs_buffer = collections.deque(maxlen=self.latency)
         self.root_state_buffer = collections.deque(maxlen=self.latency + 1)
         
     def _reset_idx(self, env_ids: torch.Tensor):
         self.drone._reset_idx(env_ids)
-        # reset traj with done flag
-        if not self.use_eval: # mixed
+        if not self.use_eval: 
             self.ref[0].reset(env_ids)
             self.ref[1].reset(env_ids)
-            n = len(env_ids)
-            if self.traj_weighted_sampling:
-                # [多任务加权采样] 用 EMA return 计算权重，return 低的轨迹类型获得更多训练机会
-                weights = torch.softmax(-self.traj_ema_return / self.traj_sample_temp, dim=0)
-                weights = weights.clamp(min=self.traj_sample_min_w)
-                weights = weights / weights.sum()
-                new_seq = torch.multinomial(weights.unsqueeze(0).expand(n, -1), 1).squeeze(-1)
-            else:
-                # 消融用：关闭动态权重，退化为 poly/zigzag 50/50 均匀采样。
-                new_seq = torch.randint(0, 2, (n,), device=self.device)
-            self.ref_style_seq[env_ids] = new_seq
+            self.ref_style_seq[env_ids] = torch.randint(0, 2, (len(env_ids),)).to(self.device)
 
         if self.use_eval:
             self.ref.reset(env_ids)
 
         pos = torch.zeros(len(env_ids), 3, device=self.device)
-        pos = pos + self.origin # init: (0, 0, 1)
+        pos = pos + self.origin 
         rot = euler_to_quaternion(self.init_rpy_dist.sample(env_ids.shape))
         vel = torch.zeros(len(env_ids), 1, 6, device=self.device)
         self.drone.set_world_poses(
@@ -402,7 +390,6 @@ class Track(IsaacEnv):
         )
         self.drone.set_velocities(vel, env_ids)
         
-        # set last values
         self.last_linear_v[env_ids] = torch.norm(vel[..., :3], dim=-1)
         self.last_angular_v[env_ids] = torch.norm(vel[..., 3:], dim=-1)
         self.last_linear_a[env_ids] = torch.zeros_like(self.last_linear_v[env_ids])
@@ -412,44 +399,24 @@ class Track(IsaacEnv):
 
         self.stats[env_ids] = 0.
 
-        # init prev_actions: hover
         cmd_init = 2.0 * (self.drone.throttle[env_ids]) ** 2 - 1.0
         self.info['prev_action'][env_ids, :, 3] = cmd_init.mean(dim=-1)
         self.prev_actions[env_ids] = self.info['prev_action'][env_ids].clone()
         
-        # add init_action to self.action_history_buffer
         for _ in range(self.action_history):
-            self.action_history_buffer.append(self.prev_actions) # add all prev_actions, not len(env_ids)
+            self.action_history_buffer.append(self.prev_actions) 
         
-        if self._should_render(0) and (env_ids == self.central_env_idx).any() :
-            # visualize the trajectory
-            self.draw.clear_lines()
-            traj_vis = self._compute_traj(self.max_episode_length, self.central_env_idx.unsqueeze(0))[0]
-            traj_vis = traj_vis + self.envs_positions[self.central_env_idx]
-            point_list_0 = traj_vis[:-1].tolist()
-            point_list_1 = traj_vis[1:].tolist()
-            colors = [(1.0, 1.0, 1.0, 1.0) for _ in range(len(point_list_0))]
-            sizes = [1 for _ in range(len(point_list_0))]
-            self.draw.draw_lines(point_list_0, point_list_1, colors, sizes)
-
-        # [2026-05-06 重构] 旧 sinsum 直接 reset + 新 composite 分离 reset → 统一走 _reset_disturbance
-        # 原代码：
-        # if self.wind:
-        #     self.wind_i[env_ids] = torch.rand(...) * ...
-        #     self.wind_w[env_ids] = torch.randn(...)
-        # if self.disturbance_enable:
-        #     self._reset_disturbance(env_ids)
-        if self.wind:
+        if self.disturbance_enable:
             self._reset_disturbance(env_ids)
+        # 更新整机总质量，确保与 reset / randomization 后的真实质量一致
+        self.total_mass = self.drone._view.get_body_masses().reshape(self.num_envs, -1).sum(-1, keepdim=True)  # [num_envs, 1]  
 
     def _pre_sim_step(self, tensordict: TensorDictBase):        
         actions = tensordict[("agents", "action")]
         self.info["prev_action"] = tensordict[("info", "prev_action")]
         self.info["policy_action"] = tensordict[("info", "policy_action")]
-        # self.info["prev_prev_action"] = tensordict[("info", "prev_prev_action")]
         self.policy_actions = tensordict[("info", "policy_action")].clone()
         self.prev_actions = self.info["prev_action"].clone()
-        # self.prev_prev_actions = self.info["prev_prev_action"].clone()
         
         self.action_error_order1 = tensordict[("stats", "action_error_order1")].clone()
         self.stats["action_error_order1_mean"].add_(self.action_error_order1.mean(dim=-1).unsqueeze(-1))
@@ -457,25 +424,338 @@ class Track(IsaacEnv):
 
         self.effort = self.drone.apply_action(actions)
 
-        # [2026-05-06 重构] 旧 sinsum 内联施力 + 新 composite 分离施力 → 统一走 _update_and_apply_disturbance
-        # 原代码：
-        # if self.wind:
-        #     t = (self.progress_buf * self.dt).reshape(-1, 1, 1)
-        #     self.wind_force = self.wind_i * torch.sin(t * self.wind_w).sum(-1)
-        #     wind_forces = self.total_mass.reshape(self.num_envs, 1, 1) * self.wind_force.unsqueeze(1)
-        #     self.drone.base_link.apply_forces(wind_forces, is_global=True)
-        # if self.disturbance_enable:
-        #     self._update_and_apply_disturbance()
-        if self.wind:
+        # 应用复合扰动并计算 gt_disturbance 标签
+        if self.disturbance_enable:
             self._update_and_apply_disturbance()
+            # 平动扰动加速度：世界系 → 体系
+            dist_acc_world = self.dist_acc.unsqueeze(1)              # [N, 1, 3]
+            dist_acc_body  = quat_rotate_inverse(
+                self.drone.rot, dist_acc_world
+            ).squeeze(1)                                             # [N, 3]
+            # 转动扰动角加速度：直接取体系真值
+            if self.torque_disturbance_enable:
+                dist_ang_acc_body = self.dist_ang_acc                # [N, 3] 已是体系
+            else:
+                dist_ang_acc_body = torch.zeros_like(dist_acc_body)
+            # [0528] 拼接 6D 标签 = acc_dist_body(3) + ang_acc_dist_body(3)
+            self.info["gt_disturbance"][:] = torch.cat(
+                [dist_acc_body, dist_ang_acc_body], dim=-1
+            )
+        else:
+            self.info["gt_disturbance"].zero_()
+
+        #     # 施加到物理引擎 (世界坐标系)
+        #     wind_forces = TOTAL_MASS * self.wind_force
+        #     wind_forces = wind_forces.unsqueeze(1).expand(*self.drone.shape, 3)
+        #     self.drone.base_link.apply_forces(wind_forces, is_global=True)
+        # else:
+        #     # 如果没开风，标签为 0
+        #     # self.info["gt_disturbance"].zero_()
+        #     # 如果没开风，集总扰动就只剩下空气阻力
+        #     vel_world = self.drone.vel[..., :3]
+        #     vel_norm = torch.norm(vel_world, dim=-1, keepdim=True)
+        #     drag_acc_world = - (self.drone.drag_coef * vel_world * vel_norm) / TOTAL_MASS
+        #     disturbance_body = quat_rotate_inverse(self.drone.rot, drag_acc_world) 
+        #     self.info["gt_disturbance"][:] = disturbance_body.squeeze(1)
+
+
+    def _reset_disturbance(self, env_ids: torch.Tensor):
+        """重置指定环境的扰动参数，支持 sinsum 和 composite 两种模式。"""
+        if not self.disturbance_enable:
+            return
+        n = len(env_ids)
+        device = self.device
+
+        if self.dist_mode == "sinsum":
+            self.wind_i[env_ids] = (
+                torch.rand(n, 1, device=device)
+                * (self.dist_intensity_high - self.dist_intensity_low)
+                + self.dist_intensity_low
+            )
+            self.wind_w[env_ids] = torch.randn(n, 3, self.dist_num_freqs, device=device)
+            return
+
+        if self.use_eval:
+            bias_range      = self.dist_cfg["bias"].get("range_eval", [-2.0, 2.0])
+            gm_sigma_range  = self.dist_cfg["gauss_markov"].get("sigma_range_eval", [0.8, 1.5])
+            swing_amp_range = self.dist_cfg["swing"].get("amp_range_eval", [0.0, 1.2])
+        else:
+            bias_range      = self.dist_cfg["bias"].get("range_train", [-2.0, 2.0])
+            gm_sigma_range  = self.dist_cfg["gauss_markov"].get("sigma_range_train", [0.2, 0.8])
+            swing_amp_range = self.dist_cfg["swing"].get("amp_range_train", [0.0, 0.8])
+
+        if self.dist_mode == "composite":
+            # bias：每轴独立均匀采样
+            if self.dist_cfg["bias"].get("enable", True):
+                self.dist_bias[env_ids] = (
+                    torch.rand(n, 3, device=device)
+                    * (bias_range[1] - bias_range[0]) + bias_range[0]
+                )
+            else:
+                self.dist_bias[env_ids] = 0.0
+
+            # Gauss-Markov
+            if self.dist_cfg["gauss_markov"].get("enable", True):
+                sigma = (
+                    torch.rand(n, 1, device=device)
+                    * (gm_sigma_range[1] - gm_sigma_range[0]) + gm_sigma_range[0]
+                )
+                tau_range = self.dist_cfg["gauss_markov"].get("tau_range", [0.5, 2.0])
+                tau = (
+                    torch.rand(n, 1, device=device)
+                    * (tau_range[1] - tau_range[0]) + tau_range[0]
+                )
+                self.dist_gm_sigma[env_ids] = sigma
+                self.dist_gm_tau[env_ids]   = tau
+                self.dist_gm_alpha[env_ids] = torch.exp(-self.dt / tau)
+                if self.dist_cfg["gauss_markov"].get("reset_to_zero", True):
+                    self.dist_gm[env_ids] = 0.0
+            else:
+                self.dist_gm[env_ids] = 0.0
+
+            # swing 正弦
+            if self.dist_cfg["swing"].get("enable", True):
+                def _rand_amp(n, device):
+                    return (
+                        torch.rand(n, device=device)
+                        * (swing_amp_range[1] - swing_amp_range[0]) + swing_amp_range[0]
+                    )
+                freq_range = self.dist_cfg["swing"].get("freq_range", [0.3, 1.2])
+                freq = (
+                    torch.rand(n, 1, device=device)
+                    * (freq_range[1] - freq_range[0]) + freq_range[0]
+                )
+                use_rand_phase = self.dist_cfg["swing"].get("random_phase", True)
+                def _rand_phase(n, device):
+                    return 2.0 * torch.pi * torch.rand(n, device=device) if use_rand_phase else torch.zeros(n, device=device)
+
+                self.dist_swing_amp[env_ids, 0]   = _rand_amp(n, device)
+                self.dist_swing_amp[env_ids, 1]   = _rand_amp(n, device)
+                self.dist_swing_freq[env_ids]      = freq
+                self.dist_swing_phase[env_ids, 0] = _rand_phase(n, device)
+                self.dist_swing_phase[env_ids, 1] = _rand_phase(n, device)
+                if not self.dist_horizontal_only:
+                    self.dist_swing_amp[env_ids, 2]   = _rand_amp(n, device)
+                    self.dist_swing_phase[env_ids, 2] = _rand_phase(n, device)
+                else:
+                    self.dist_swing_amp[env_ids, 2]   = 0.0
+                    self.dist_swing_phase[env_ids, 2] = 0.0
+            else:
+                self.dist_swing_amp[env_ids]   = 0.0
+                self.dist_swing_freq[env_ids]  = 0.0
+                self.dist_swing_phase[env_ids] = 0.0
+
+        # [0528 新增] 重置转动扰动参数
+        if self.torque_disturbance_enable:
+            self._reset_torque_disturbance(env_ids)
+
+    def _update_and_apply_disturbance(self):
+        """每步更新扰动并施加，支持 sinsum 和 composite 两种模式。"""
+        if not self.disturbance_enable:
+            return
+        if self.dist_mode == "sinsum":
+            t = (self.progress_buf * self.dt).reshape(self.num_envs, 1, 1)
+            a_dist = self.wind_i * torch.sin(t * self.wind_w).sum(-1)  # [N, 3]
+            self.dist_acc[:] = a_dist
+        elif self.dist_mode == "composite":
+            a_bias = self.dist_bias.clone()
+            eps   = torch.randn_like(self.dist_gm)
+            a_gm  = self.dist_gm_alpha * self.dist_gm + self.dist_gm_sigma * torch.sqrt(1.0 - self.dist_gm_alpha ** 2) * eps
+            self.dist_gm[:] = a_gm
+            if self.dist_horizontal_only:
+                a_gm[:, 2] = 0.0
+            t = (self.progress_buf.float() * self.dt).reshape(-1, 1)
+            a_swing = self.dist_swing_amp * torch.sin(
+                2.0 * torch.pi * self.dist_swing_freq * t + self.dist_swing_phase
+            )
+            a_dist = a_bias + a_gm + a_swing
+            if self.dist_horizontal_only:
+                a_dist[:, 2] = 0.0
+            if self.dist_clip_total:
+                max_acc = self.dist_max_acc
+                if self.dist_horizontal_only:
+                    xy = a_dist[:, :2]
+                    scale = torch.clamp(max_acc / torch.linalg.norm(xy, dim=-1, keepdim=True).clamp_min(1e-6), max=1.0)
+                    a_dist[:, :2] = xy * scale
+                else:
+                    scale = torch.clamp(max_acc / torch.linalg.norm(a_dist, dim=-1, keepdim=True).clamp_min(1e-6), max=1.0)
+                    a_dist = a_dist * scale
+            self.dist_acc[:] = a_dist
+        dist_force = self.total_mass * self.dist_acc  # [N, 3] 世界系
+        self.dist_force[:] = dist_force
+
+        # [0528 修改] 若转动扰动开启则同时施加力矩，否则只施加外力
+        if self.torque_disturbance_enable:
+            self._update_torque_disturbance()
+            # τ_dist_body = J * α_dist  （体系，N·m）
+            tau_dist_body  = self.J_diag * self.dist_ang_acc          # [N, 3]
+            # 体系 → 世界系
+            tau_dist_world = quat_rotate(
+                self.drone.rot.squeeze(1), tau_dist_body
+            )                                                          # [N, 3]
+            self.drone.base_link.apply_forces_and_torques_at_pos(
+                dist_force.unsqueeze(1).expand(self.num_envs, self.drone.n, 3),
+                tau_dist_world.unsqueeze(1).expand(self.num_envs, self.drone.n, 3),
+                is_global=True
+            )
+        else:
+            self.drone.base_link.apply_forces(
+                dist_force.unsqueeze(1).expand(self.num_envs, self.drone.n, 3),
+                is_global=True
+            )
+
+    def _reset_torque_disturbance(self, env_ids: torch.Tensor):
+        """重置指定环境的转动扰动参数（体坐标系，rad/s²）。结构与平动扰动完全对称。"""
+        if not self.torque_disturbance_enable:
+            return
+        n = len(env_ids)
+        device = self.device
+        cfg = self.torque_dist_cfg
+
+        if self.use_eval:
+            bias_range      = cfg["bias"].get("range_eval", [-2.5, 2.5])
+            gm_sigma_range  = cfg["gauss_markov"].get("sigma_range_eval", [0.8, 2.0])
+            swing_amp_range = cfg["swing"].get("amp_range_eval", [0.0, 2.0])
+        else:
+            bias_range      = cfg["bias"].get("range_train", [-1.5, 1.5])
+            gm_sigma_range  = cfg["gauss_markov"].get("sigma_range_train", [0.3, 1.0])
+            swing_amp_range = cfg["swing"].get("amp_range_train", [0.0, 1.0])
+
+        yaw_scale = self.torque_dist_yaw_scale
+
+        # bias
+        if cfg["bias"].get("enable", True):
+            self.dist_torque_bias[env_ids] = (
+                torch.rand(n, 3, device=device)
+                * (bias_range[1] - bias_range[0]) + bias_range[0]
+            )
+            self.dist_torque_bias[env_ids, 2] *= yaw_scale
+        else:
+            self.dist_torque_bias[env_ids] = 0.0
+
+        # Gauss-Markov
+        if cfg["gauss_markov"].get("enable", True):
+            sigma = (
+                torch.rand(n, 1, device=device)
+                * (gm_sigma_range[1] - gm_sigma_range[0]) + gm_sigma_range[0]
+            )
+            tau_range = cfg["gauss_markov"].get("tau_range", [0.3, 1.5])
+            tau = (
+                torch.rand(n, 1, device=device)
+                * (tau_range[1] - tau_range[0]) + tau_range[0]
+            )
+            self.dist_torque_gm_sigma[env_ids] = sigma
+            self.dist_torque_gm_tau[env_ids]   = tau
+            self.dist_torque_gm_alpha[env_ids] = torch.exp(-self.dt / tau)
+            if cfg["gauss_markov"].get("reset_to_zero", True):
+                self.dist_torque_gm[env_ids] = 0.0
+        else:
+            self.dist_torque_gm[env_ids] = 0.0
+
+        # swing
+        if cfg["swing"].get("enable", True):
+            def _rand_amp(n, device):
+                return (
+                    torch.rand(n, device=device)
+                    * (swing_amp_range[1] - swing_amp_range[0]) + swing_amp_range[0]
+                )
+            freq_range = cfg["swing"].get("freq_range", [0.3, 1.2])
+            freq = (
+                torch.rand(n, 1, device=device)
+                * (freq_range[1] - freq_range[0]) + freq_range[0]
+            )
+            use_rand_phase = cfg["swing"].get("random_phase", True)
+            def _rand_phase(n, device):
+                return 2.0 * torch.pi * torch.rand(n, device=device) if use_rand_phase else torch.zeros(n, device=device)
+
+            self.dist_torque_swing_amp[env_ids, 0]   = _rand_amp(n, device)
+            self.dist_torque_swing_amp[env_ids, 1]   = _rand_amp(n, device)
+            self.dist_torque_swing_amp[env_ids, 2]   = _rand_amp(n, device) * yaw_scale
+            self.dist_torque_swing_freq[env_ids]      = freq
+            self.dist_torque_swing_phase[env_ids, 0] = _rand_phase(n, device)
+            self.dist_torque_swing_phase[env_ids, 1] = _rand_phase(n, device)
+            self.dist_torque_swing_phase[env_ids, 2] = _rand_phase(n, device)
+        else:
+            self.dist_torque_swing_amp[env_ids]   = 0.0
+            self.dist_torque_swing_freq[env_ids]  = 0.0
+            self.dist_torque_swing_phase[env_ids] = 0.0
+
+    def _update_torque_disturbance(self):
+        """每步更新转动扰动角加速度（体坐标系，rad/s²）。结构与平动扰动完全对称。"""
+        if not self.torque_disturbance_enable:
+            return
+        cfg = self.torque_dist_cfg
+        yaw_scale = self.torque_dist_yaw_scale
+
+        # bias（episode 内不变）
+        a_bias = self.dist_torque_bias.clone()
+
+        # Gauss-Markov 更新
+        eps  = torch.randn_like(self.dist_torque_gm)
+        a_gm = (self.dist_torque_gm_alpha * self.dist_torque_gm
+                + self.dist_torque_gm_sigma * torch.sqrt(1.0 - self.dist_torque_gm_alpha ** 2) * eps)
+        self.dist_torque_gm[:] = a_gm
+
+        # 摆动正弦
+        t = (self.progress_buf.float() * self.dt).reshape(-1, 1)
+        a_swing = self.dist_torque_swing_amp * torch.sin(
+            2.0 * torch.pi * self.dist_torque_swing_freq * t + self.dist_torque_swing_phase
+        )
+
+        ang_acc = a_bias + a_gm + a_swing
+
+        # yaw 轴缩放（已在 reset 时各轴单独缩放，此处仅作防御性二次缩放）
+        ang_acc[:, 2] = ang_acc[:, 2] * yaw_scale
+
+        # clip 总范数
+        if self.torque_dist_clip:
+            max_acc = self.torque_dist_max_eval if self.use_eval else self.torque_dist_max_train
+            norm  = torch.linalg.norm(ang_acc, dim=-1, keepdim=True).clamp_min(1e-6)
+            scale = torch.clamp(max_acc / norm, max=1.0)
+            ang_acc = ang_acc * scale
+
+        self.dist_ang_acc[:] = ang_acc
 
     def _compute_state_and_obs(self):
         self.root_state = self.drone.get_state()
         self.info["drone_state"][:] = self.root_state[..., :13]
 
+        # [修改 3] 提取 PINN 需要的纯净物理特征 (Input Features X)
+        # # 提取 机体线速度 (3维)
+        # v_body = self.root_state[..., 13:16]
+        # # 提取 机体角速度 (3维)
+        # w_body = self.root_state[..., 16:19]
+        # # 提取 旋转矩阵 (9维)
+        # R_flat = self.root_state[..., 19:28]
+        # ========================================================
+        # [关键修复 1] 正确提取机体坐标系下的速度 (v_body, w_body)
+        # omni_drones 已经在 self.drone.vel_b 中算好了机体坐标系下的速度
+        # vel_b 的前 3 维是线速度，后 3 维是角速度
+        # ========================================================
+        v_body = self.drone.vel_b[..., 0:3]   # 机体线速度 (3维)
+        w_body = self.drone.vel_b[..., 3:6]   # 机体角速度 (3维)
+        R_flat = self.root_state[..., 19:28]  # 旋转矩阵 (9维)
+        
+        # # 拼接成特征向量 (15维)
+        # pinn_features = torch.cat([v_body, w_body, R_flat], dim=-1)
+        # # 存入 info
+        # self.info["pinn_features"][:] = pinn_features
+        
+        # [0528 新增] 控制力矩（世界系 → 体系），用于转动物理损失
+        # self.drone.torques: [N, 1, 3] 世界系（每步 apply_action 后更新）
+        tau_ctrl_body = quat_rotate_inverse(
+            self.drone.rot, self.drone.torques
+        )                                                        # [N, 1, 3] 体系
+
+        # 拼接成特征向量 (18维: v_body+w_body+R_flat+tau_ctrl_body)
+        pinn_features = torch.cat([v_body, w_body, R_flat, tau_ctrl_body], dim=-1)
+
+        # [修改] 使用 .squeeze(1) 去掉中间的 Agent 维度
+        # [8192, 1, 18] -> [8192, 18]
+        self.info["pinn_features"][:] = pinn_features.squeeze(1)
+
         if self.cfg.task.latency:
             self.root_state_buffer.append(self.root_state)
-            # set t and target pos to the real values
             if self.random_latency:
                 random_indices = torch.randint(0, len(self.root_state_buffer), (self.num_envs,), device=self.device)
                 root_state = torch.stack(list(self.root_state_buffer))[random_indices, torch.arange(self.num_envs)]
@@ -488,7 +768,6 @@ class Track(IsaacEnv):
         
         self.rpos = self.target_pos - root_state[..., :3]
         if self.use_ab_wolrd_pos:
-            # pos, rpos, linear velocity, body rate, heading, lateral, up
             obs = [
                 root_state[..., :3],
                 self.rpos.flatten(1).unsqueeze(1),
@@ -496,12 +775,10 @@ class Track(IsaacEnv):
                 root_state[..., 16:19], root_state[..., 19:28],
             ]
         else:
-            # rpos, linear velocity, body rate, heading, lateral, up
             obs = [
                 self.rpos.flatten(1).unsqueeze(1),
-                # root_state[..., 3:7], # quat
-                root_state[..., 7:10], # linear v
-                root_state[..., 19:28], # rotation
+                root_state[..., 7:10], 
+                root_state[..., 19:28], 
             ]
         self.stats['drone_state'] = root_state[..., :13].squeeze(1).clone()
         if self.time_encoding:
@@ -510,33 +787,32 @@ class Track(IsaacEnv):
 
         self.stats["smoothness_mean"].add_(self.drone.throttle_difference)
         self.stats["smoothness_max"].set_(torch.max(self.drone.throttle_difference, self.stats["smoothness_max"]))
-        # linear_v, angular_v
+        
         self.linear_v = torch.norm(self.root_state[..., 7:10], dim=-1)
         self.angular_v = torch.norm(self.root_state[..., 10:13], dim=-1)
         self.stats["linear_v_max"].set_(torch.max(self.stats["linear_v_max"], torch.abs(self.linear_v)))
         self.stats["linear_v_mean"].add_(self.linear_v)
         self.stats["angular_v_max"].set_(torch.max(self.stats["angular_v_max"], torch.abs(self.angular_v)))
         self.stats["angular_v_mean"].add_(self.angular_v)
-        # linear_a, angular_a
+        
         self.linear_a = torch.abs(self.linear_v - self.last_linear_v) / self.dt
         self.angular_a = torch.abs(self.angular_v - self.last_angular_v) / self.dt
         self.stats["linear_a_max"].set_(torch.max(self.stats["linear_a_max"], torch.abs(self.linear_a)))
         self.stats["linear_a_mean"].add_(self.linear_a)
         self.stats["angular_a_max"].set_(torch.max(self.stats["angular_a_max"], torch.abs(self.angular_a)))
         self.stats["angular_a_mean"].add_(self.angular_a)
-        # linear_jerk, angular_jerk
+        
         self.linear_jerk = torch.abs(self.linear_a - self.last_linear_a) / self.dt
         self.angular_jerk = torch.abs(self.angular_a - self.last_angular_a) / self.dt
         self.stats["linear_jerk_max"].set_(torch.max(self.stats["linear_jerk_max"], torch.abs(self.linear_jerk)))
         self.stats["linear_jerk_mean"].add_(self.linear_jerk)
         self.stats["angular_jerk_max"].set_(torch.max(self.stats["angular_jerk_max"], torch.abs(self.angular_jerk)))
         self.stats["angular_jerk_mean"].add_(self.angular_jerk)
-        # snap
+        
         self.linear_snap = torch.abs(self.linear_jerk - self.last_linear_jerk) / self.dt
         self.stats["linear_snap_max"].set_(torch.max(self.stats["linear_snap_max"], torch.abs(self.linear_snap)))
         self.stats["linear_snap_mean"].add_(self.linear_snap)
         
-        # set last
         self.last_linear_v = self.linear_v.clone()
         self.last_angular_v = self.angular_v.clone()
         self.last_linear_a = self.linear_a.clone()
@@ -546,7 +822,6 @@ class Track(IsaacEnv):
         
         obs = torch.cat(obs, dim=-1)
         
-        # add time encoding
         t = (self.progress_buf / self.max_episode_length).unsqueeze(-1)
         if self.time_encoding:
             state = obs.squeeze(1)
@@ -555,7 +830,6 @@ class Track(IsaacEnv):
         
         self.stats["obs_range"].set_(torch.max(torch.abs(obs), dim=-1).values)
         
-        # add action history to actor
         if self.action_history > 0:
             self.action_history_buffer.append(self.prev_actions)
             all_action_history = torch.concat(list(self.action_history_buffer), dim=-1)
@@ -570,16 +844,17 @@ class Track(IsaacEnv):
                 "observation": obs,
                 "state": state,
             },
-            "stats": self.stats,  
-            "info": self.info
+            "stats": self.stats.clone(),  # 加上 clone() 确保安全
+            "info": self.info.clone()     # <--- 必须加上 clone() !!!
         }, self.batch_size)
+
+    # ================= 以下为未修改部分，直接保留 ================= 
 
     def _compute_reward_and_done(self):
         # pos reward
         distance = torch.norm(self.rpos[:, [0]], dim=-1)
         self.stats["tracking_error"].add_(-distance)
         self.stats["tracking_error_ema"].lerp_(distance, (1-self.alpha))
-        self.stats["tracking_error_max"].set_(torch.max(self.stats["tracking_error_max"], distance))  # [20260506]
         
         reward_pos = self.reward_distance_scale * torch.exp(-distance)
         
@@ -630,21 +905,10 @@ class Track(IsaacEnv):
         self.stats['reward_action_smoothness_scale'].set_(self.reward_action_smoothness_weight * torch.ones(self.num_envs, 1, device=self.device))
         self.stats['reward_action_norm_scale'].set_(self.reward_action_norm_weight * torch.ones(self.num_envs, 1, device=self.device))
 
-        # done = (
-        #     (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
-        #     | (self.drone.pos[..., 2] < 0.1)
-        #     # | (distance > self.reset_thres)
-        # )
-        # [20260506] eval_no_reset=True 时禁用所有提前 reset（包括 z-crash 和 distance>thres），强制跑满
-        thres_reset = distance > self.reset_thres
-        z_crash = self.drone.pos[..., 2] < 0.1
-        if self.use_eval and self.eval_no_reset:
-            thres_reset = torch.zeros_like(thres_reset)
-            z_crash = torch.zeros_like(z_crash)
         done = (
             (self.progress_buf >= self.max_episode_length).unsqueeze(-1)
-            | z_crash
-            | thres_reset
+            | (self.drone.pos[..., 2] < 0.1)
+            | (distance > self.reset_thres)
         )
 
         if self.use_eval:
@@ -709,38 +973,12 @@ class Track(IsaacEnv):
         self.stats["return"] += reward
         self.stats["episode_len"][:] = self.progress_buf.unsqueeze(1)
 
-        # [多任务加权采样] done 时更新对应轨迹类型的 EMA return，用于下次 reset 时的加权采样
-        if not self.use_eval and self.traj_weighted_sampling:
-            done_mask = done.squeeze(-1)
-            for style_id in range(2):
-                style_mask = done_mask & (self.ref_style_seq == style_id)
-                if style_mask.any():
-                    batch_ret = self.stats["return"][style_mask].mean()
-                    self.traj_ema_return[style_id] = (
-                        (1.0 - self.traj_ema_alpha) * self.traj_ema_return[style_id]
-                        + self.traj_ema_alpha * batch_ret
-                    )
-            # 计算当前采样权重（用 softmin：return 越低，权重越高）
-            weights = torch.softmax(-self.traj_ema_return / self.traj_sample_temp, dim=0)
-            # 约束最低权重，避免某类型被完全饿死
-            weights = weights.clamp(min=self.traj_sample_min_w)
-            weights = weights / weights.sum()
-            # 写入 stats 供 wandb 监控（每个 env 写相同值）
-            self.stats["traj_w_poly"][:] = weights[0]
-            self.stats["traj_w_zigzag"][:] = weights[1]
-            self.stats["traj_style"][:] = self.ref_style_seq.unsqueeze(1).float()
-        elif not self.use_eval:
-            self.stats["traj_w_poly"][:] = 0.5
-            self.stats["traj_w_zigzag"][:] = 0.5
-            self.stats["traj_style"][:] = self.ref_style_seq.unsqueeze(1).float()
-
         return TensorDict(
             {
                 "agents": {
                     "reward": reward.unsqueeze(-1)
                 },
                 "done": done,
-                "stats": self.stats.clone(),
             },
             self.batch_size,
         )
@@ -765,168 +1003,3 @@ class Track(IsaacEnv):
             target_pos = torch.stack(target_pos, dim=1)[env_ids]
 
         return target_pos
-
-
-    def _reset_disturbance(self, env_ids: torch.Tensor):
-        """
-        重置指定环境的扰动参数。由 _reset_idx 在 wind=True 时调用。
-        dist_mode 决定分支：sinsum | composite。
-        [2026-05-06 重构] 移除 disturbance_enable guard（由 wind 统一控制）。
-        """
-        # [2026-05-06 重构] 原 guard：if not self.disturbance_enable: return  已移除
-        n = len(env_ids)
-        device = self.device
-
-        if self.use_eval:
-            bias_range = self.dist_cfg.get("bias", {}).get("range_eval", [-2.0, 2.0])
-            gm_sigma_range = self.dist_cfg.get("gauss_markov", {}).get("sigma_range_eval", [0.8, 1.5])
-            swing_amp_range = self.dist_cfg.get("swing", {}).get("amp_range_eval", [0.0, 1.2])
-        else:
-            bias_range = self.dist_cfg.get("bias", {}).get("range_train", [-2.0, 2.0])
-            gm_sigma_range = self.dist_cfg.get("gauss_markov", {}).get("sigma_range_train", [0.2, 0.8])
-            swing_amp_range = self.dist_cfg.get("swing", {}).get("amp_range_train", [0.0, 0.8])
-
-        if self.dist_mode == "sinsum":
-            self.wind_i[env_ids] = (
-                torch.rand(n, 1, device=device)
-                * (self.dist_intensity_high - self.dist_intensity_low)
-                + self.dist_intensity_low
-            )
-            self.wind_w[env_ids] = torch.randn(n, 3, self.dist_num_freqs, device=device)
-
-        elif self.dist_mode == "composite":
-            if self.dist_cfg["bias"].get("enable", True):
-                self.dist_bias[env_ids] = (
-                    torch.rand(n, 3, device=device)
-                    * (bias_range[1] - bias_range[0])
-                    + bias_range[0]
-                )
-            else:
-                self.dist_bias[env_ids] = 0.0
-
-            if self.dist_cfg["gauss_markov"].get("enable", True):
-                sigma = (
-                    torch.rand(n, 1, device=device)
-                    * (gm_sigma_range[1] - gm_sigma_range[0])
-                    + gm_sigma_range[0]
-                )
-                tau_range = self.dist_cfg["gauss_markov"].get("tau_range", [0.5, 2.0])
-                tau = (
-                    torch.rand(n, 1, device=device)
-                    * (tau_range[1] - tau_range[0])
-                    + tau_range[0]
-                )
-                alpha = torch.exp(-self.dt / tau)
-                self.dist_gm_sigma[env_ids] = sigma
-                self.dist_gm_tau[env_ids] = tau
-                self.dist_gm_alpha[env_ids] = alpha
-                if self.dist_cfg["gauss_markov"].get("reset_to_zero", True):
-                    self.dist_gm[env_ids] = 0.0
-            else:
-                self.dist_gm[env_ids] = 0.0
-
-            if self.dist_cfg["swing"].get("enable", True):
-                amp_x = (
-                    torch.rand(n, device=device)
-                    * (swing_amp_range[1] - swing_amp_range[0])
-                    + swing_amp_range[0]
-                )
-                amp_y = (
-                    torch.rand(n, device=device)
-                    * (swing_amp_range[1] - swing_amp_range[0])
-                    + swing_amp_range[0]
-                )
-                freq_range = self.dist_cfg["swing"].get("freq_range", [0.3, 1.2])
-                freq = (
-                    torch.rand(n, 1, device=device)
-                    * (freq_range[1] - freq_range[0])
-                    + freq_range[0]
-                )
-                if self.dist_cfg["swing"].get("random_phase", True):
-                    phase_x = 2.0 * torch.pi * torch.rand(n, device=device)
-                    phase_y = 2.0 * torch.pi * torch.rand(n, device=device)
-                else:
-                    phase_x = torch.zeros(n, device=device)
-                    phase_y = torch.zeros(n, device=device)
-
-                self.dist_swing_amp[env_ids, 0] = amp_x
-                self.dist_swing_amp[env_ids, 1] = amp_y
-                self.dist_swing_freq[env_ids] = freq
-                self.dist_swing_phase[env_ids, 0] = phase_x
-                self.dist_swing_phase[env_ids, 1] = phase_y
-                if not self.dist_horizontal_only:
-                    amp_z = (
-                        torch.rand(n, device=device)
-                        * (swing_amp_range[1] - swing_amp_range[0])
-                        + swing_amp_range[0]
-                    )
-                    phase_z = (
-                        2.0 * torch.pi * torch.rand(n, device=device)
-                        if self.dist_cfg["swing"].get("random_phase", True)
-                        else torch.zeros(n, device=device)
-                    )
-                    self.dist_swing_amp[env_ids, 2] = amp_z
-                    self.dist_swing_phase[env_ids, 2] = phase_z
-                else:
-                    self.dist_swing_amp[env_ids, 2] = 0.0
-                    self.dist_swing_phase[env_ids, 2] = 0.0
-            else:
-                self.dist_swing_amp[env_ids] = 0.0
-                self.dist_swing_freq[env_ids] = 0.0
-                self.dist_swing_phase[env_ids] = 0.0
-
-    def _update_and_apply_disturbance(self):
-        """
-        每步更新并施加扰动力。由 _pre_sim_step 在 wind=True 时调用。
-        dist_mode 决定分支：sinsum | composite。
-        [2026-05-06 重构] 移除 disturbance_enable guard（由 wind 统一控制）。
-        """
-        # [2026-05-06 重构] 原 guard：if not self.disturbance_enable: return  已移除
-        if self.dist_mode == "sinsum":
-            t = (self.progress_buf * self.dt).reshape(self.num_envs, 1, 1)
-            a_dist = self.wind_i * torch.sin(t * self.wind_w).sum(-1)
-            if self.dist_horizontal_only:
-                a_dist[:, 2] = 0.0
-            self.dist_acc[:] = a_dist
-
-        elif self.dist_mode == "composite":
-            a_bias = self.dist_bias.clone()
-
-            eps = torch.randn_like(self.dist_gm)
-            alpha = self.dist_gm_alpha
-            sigma = self.dist_gm_sigma
-            a_gm = alpha * self.dist_gm + sigma * torch.sqrt(1.0 - alpha ** 2) * eps
-            self.dist_gm[:] = a_gm
-            if self.dist_horizontal_only:
-                a_gm[:, 2] = 0.0
-
-            t = (self.progress_buf.float() * self.dt).reshape(-1, 1)
-            phase = self.dist_swing_phase   # [N, 3]
-            freq = self.dist_swing_freq     # [N, 1]
-            amp = self.dist_swing_amp       # [N, 3]
-            a_swing = amp * torch.sin(2.0 * torch.pi * freq * t + phase)  # [N, 3]
-
-            a_dist = a_bias + a_gm + a_swing
-
-            if self.dist_horizontal_only:
-                a_dist[:, 2] = 0.0
-
-            if self.dist_clip_total:
-                max_acc = self.dist_max_acc
-                if self.dist_horizontal_only:
-                    xy = a_dist[:, :2]
-                    norm_xy = torch.linalg.norm(xy, dim=-1, keepdim=True).clamp_min(1e-6)
-                    scale = torch.clamp(max_acc / norm_xy, max=1.0)
-                    a_dist[:, :2] = xy * scale
-                else:
-                    norm_3d = torch.linalg.norm(a_dist, dim=-1, keepdim=True).clamp_min(1e-6)
-                    scale = torch.clamp(max_acc / norm_3d, max=1.0)
-                    a_dist = a_dist * scale
-
-            self.dist_acc[:] = a_dist
-
-        mass = self.total_mass  # [num_envs, 1]
-        dist_force = mass * self.dist_acc  # [num_envs, 3]
-        self.dist_force[:] = dist_force
-        dist_force_expanded = dist_force.unsqueeze(1).expand(self.num_envs, self.drone.n, 3)
-        self.drone.base_link.apply_forces(dist_force_expanded, is_global=True)

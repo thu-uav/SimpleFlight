@@ -25,7 +25,10 @@ from .hover import Hover
 from .track import Track
 from .track_pinn import TrackPINN
 from .track_pinn_0504 import TrackPINN0504
+from .track_pinn_0528 import TrackPINN0528  # [0528 新增] 含6D扰动标签和18D特征
+from .track_pinn_test_0518 import TrackPINNTest0518
 from .track_resid_gain import TrackResidGain
 from .track_residual import TrackResidual
 from .track_datt import TrackDATT
 from .track_datt0427 import TrackDATT0427  # 原值: 无（0427新增）
+from .track_datt0615_6d import TrackDATT0615  # [0615 新增] 6D扰动版本（平动+转动 GT oracle）

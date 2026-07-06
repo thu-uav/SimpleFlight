@@ -1,0 +1,10 @@
+# Smoothness-on ablation for TrackDATT0427.
+# Inherits the original 3D composite-disturbance oracle config and only restores
+# the SimpleFlight action-smoothness reward settings.
+defaults:
+  - TrackDATT0427
+  - _self_
+
+reward_action_smoothness_weight_init: 2.0
+reward_action_smoothness_weight_lr: 0.0005
+reward_smoothness_max: 2.0

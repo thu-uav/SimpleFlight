@@ -1,0 +1,224 @@
+# ============================================================
+# Cursor ignore file for UAV / RL / simulation projects
+#
+# Goal:
+# - Keep source code, configs, envs, controllers, simulation logic readable.
+# - Keep logs, summaries, configs, and readable USD assets accessible when needed.
+# - Exclude binary, cache, checkpoints contents, media, generated artifacts, and secrets.
+#
+# Important:
+# - Do NOT ignore checkpoints/, weights/, pretrained/ as directories.
+# - Only ignore binary weight file extensions, so Cursor can still see file names
+#   and read nearby config/summary/manifest files.
+# ============================================================
+
+
+# ----------------------------
+# 1. Version control / system files
+# ----------------------------
+.git/
+.hg/
+.svn/
+.DS_Store
+Thumbs.db
+
+
+# ----------------------------
+# 2. Python cache / test cache / tooling cache
+# ----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.cache/
+.tox/
+.nox/
+
+
+# ----------------------------
+# 3. Python environments / build artifacts
+# ----------------------------
+.venv/
+venv/
+env/
+ENV/
+conda_setup/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+
+# ----------------------------
+# 4. Secrets / credentials
+# Keep examples readable, block real secrets.
+# ----------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+secrets/
+credentials/
+
+
+# ----------------------------
+# 5. Model weights / checkpoints
+# Block binary weight contents, but keep directories and filenames visible.
+#
+# Do NOT ignore:
+# checkpoints/
+# checkpoint/
+# weights/
+# pretrained/
+#
+# This allows Cursor to see files like:
+# - checkpoints/latest.ckpt
+# - weights/best.pth
+#
+# But AI should not read their binary contents.
+# ----------------------------
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.engine
+*.trt
+*.plan
+
+
+# ----------------------------
+# 6. Large binary training / dataset files
+# Keep dataset README/schema/sample text files readable.
+# Exclude binary arrays and serialized data.
+# ----------------------------
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.parquet
+*.arrow
+*.feather
+*.bin
+*.dat
+*.db
+*.sqlite
+*.sqlite3
+*.bag
+
+
+# ----------------------------
+# 7. TensorBoard / W&B binary and heavy artifacts
+#
+# Do NOT ignore the whole logs/, runs/, wandb/, tensorboard/ directories here,
+# because text logs, config.yaml, summary.json, progress.csv may be useful.
+#
+# Only ignore binary/heavy files inside them.
+# ----------------------------
+events.out.tfevents*
+*.tfevents
+*.wandb
+wandb/**/*.wandb
+wandb/**/media/
+wandb/**/artifacts/
+wandb/**/tmp/
+wandb/**/logs/debug*.log
+
+
+# ----------------------------
+# 8. Media outputs: videos, rendered images, figures
+# Keep markdown/text summaries instead of raw media files.
+# ----------------------------
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.webp
+*.svg
+
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+figures/
+videos/
+recordings/
+renders/
+rendered/
+media/
+
+
+# ----------------------------
+# 9. Simulator / robot asset binary formats
+#
+# Do NOT ignore usd/ as a directory.
+# Keep .usd and .usda readable if needed.
+# Ignore binary/heavy geometry or texture assets.
+# ----------------------------
+*.usdc
+*.fbx
+*.glb
+*.dae
+*.stl
+*.ply
+*.obj
+*.mesh
+*.exr
+*.hdr
+*.tga
+
+
+# ----------------------------
+# 10. Archives and compressed files
+# ----------------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.xz
+*.7z
+*.rar
+
+
+# ----------------------------
+# 11. Package manager / frontend artifacts if present
+# ----------------------------
+node_modules/
+.pnpm-store/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+
+# ----------------------------
+# 12. Large generated reports and office files
+# Markdown files are kept readable.
+# ----------------------------
+*.pdf
+*.docx
+*.pptx
+*.xlsx
+*.html
+*.xml
