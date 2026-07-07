@@ -1,0 +1,39 @@
+headless: true
+use_local_usd: false
+
+sim: ${task.sim}
+env: ${task.env}
+
+model_dir: null
+record_video: false
+
+total_frames: 1000_000_000
+max_iters: -1
+eval_interval: -1
+save_interval: 100
+seed: 0
+
+viewer:
+  resolution: [960, 720]
+  eye: [0., 2.0, 2.5]
+  lookat: [0., 0., 1.0]
+
+wandb:
+  group: ${oc.select:..task.name}
+  run_name: track_6d_noGT_Li   # [0626] 6D扰动 + 无GT oracle + Jacobian Lipschitz约束
+  job_type: train
+  entity: chen_zongy-tsinghua-university
+  project: sim2real
+  mode: online
+  run_id:
+  monitor_gym: True
+  tags:
+
+defaults:
+  - task: Track_6D          # [0626] 新增：6D扰动但无GT输入任务配置
+  - algo: mappo
+  - _self_
+
+algo:
+  entropy_coef: 0.01
+  clip_param: 0.1

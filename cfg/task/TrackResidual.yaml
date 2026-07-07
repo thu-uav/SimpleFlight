@@ -145,15 +145,19 @@ expose_gt_disturbance: false
 # wind: true  + disturbance.mode: "composite" → 三维复合扰动（当前配置）
 # ================================================================
 disturbance:
-  mode: "sinsum"        # "sinsum"（默认，向后兼容）| "composite"
+  # mode: "sinsum"        # "sinsum"（默认，向后兼容）| "composite"（2026-05-23 之前，第一次设置）
+  mode: "composite"      # "sinsum"（默认，向后兼容）| "composite"
 
   # 仅应用水平（x-y）扰动，z方向为0。建议值：true
   horizontal_only: false
 
   # 将所有分量求和后的总水平扰动范数进行截断
-  clip_total: false  # 不再对总扰动限幅
-  max_total_acc_train: 3.0   # m/s^2
-  max_total_acc_eval:  3.5   # m/s^2
+  # clip_total: false  # 不再对总扰动限幅（2026-05-23 之前，第一次设置）
+  clip_total: true
+  # max_total_acc_train: 3.0   # m/s^2（2026-05-23 之前，第一次设置）
+  max_total_acc_train: 6.0   # m/s^2，总水平加速度截断上限（训练）
+  # max_total_acc_eval:  3.5   # m/s^2（2026-05-23 之前，第一次设置）
+  max_total_acc_eval:  6.0   # m/s^2，总水平加速度截断上限（评估）
 
   # ============================================================
   # [mode: sinsum] 原有的多频率正弦叠加参数
@@ -173,16 +177,20 @@ disturbance:
   # 方向：[0, 2*pi] 内的均匀随机角度
   bias:
     enable: true
-    range_train: [-2.0, 2.0]   # m/s^2，每轴独立均匀采样
-    range_eval:  [-2.0, 2.0]   # m/s^2，与训练相同
+    # range_train: [-2.0, 2.0]   # m/s^2，每轴独立均匀采样（2026-05-23 之前，第一次设置）
+    range_train: [-3.5, 3.5]   # m/s^2，每轴独立均匀采样
+    # range_eval:  [-2.0, 2.0]   # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
+    range_eval:  [-3.5, 3.5]   # m/s^2，与训练相同
 
   # 分量 2：Gauss-Markov随机扰动
   # a_gm[k+1] = alpha * a_gm[k] + sigma * sqrt(1-alpha^2) * eps
   # alpha = exp(-dt / tau)
   gauss_markov:
     enable: true
-    sigma_range_train: [0.2, 0.8]   # m/s^2，稳态标准差
-    sigma_range_eval:  [0.2, 0.8]   # m/s^2，与训练相同
+    # sigma_range_train: [0.2, 0.8]   # m/s^2，稳态标准差（2026-05-23 之前，第一次设置）
+    sigma_range_train: [0.3, 1.5]   # m/s^2，稳态标准差
+    # sigma_range_eval:  [0.2, 0.8]   # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
+    sigma_range_eval:  [0.3, 1.5]   # m/s^2，与训练相同
     tau_range: [0.5, 2.0]           # 秒，相关时间
     reset_to_zero: true             # episode开始时初始化 a_gm=0
 
@@ -192,7 +200,10 @@ disturbance:
   # f_s ~ U(freq_range[0], freq_range[1])
   swing:
     enable: true
-    amp_range_train: [0.0, 0.5]    # m/s^2，每轴的幅值
-    amp_range_eval:  [0.0, 0.5]    # m/s^2，与训练相同
-    freq_range: [0.3, 1.2]         # Hz，类似钟摆的频率范围
+    # amp_range_train: [0.0, 0.5]    # m/s^2，每轴的幅值（2026-05-23 之前，第一次设置）
+    amp_range_train: [0.0, 1.0]    # m/s^2，每轴的幅值
+    # amp_range_eval:  [0.0, 0.5]    # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
+    amp_range_eval:  [0.0, 1.0]    # m/s^2，与训练相同
+    # freq_range: [0.3, 1.2]         # Hz，类似钟摆的频率范围（2026-05-23 之前，第一次设置）
+    freq_range: [0.3, 1.5]         # Hz，类似钟摆的频率范围
     random_phase: true             # phi ~ U(0, 2*pi)，避免t=0时风力为0

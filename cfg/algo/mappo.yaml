@@ -32,7 +32,7 @@ actor:
   use_orthogonal: true
 
   tanh: false #false
-  jacobian_coef:  0  #0.01  # 这是 FlipNet 论文中提到的惩罚力度系数
+  jacobian_coef:  0  # 这是 FlipNet 论文中提到的惩罚力度系数  0.0001测试最好效果
 
   # rnn:
   #   cls: gru

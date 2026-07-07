@@ -90,7 +90,7 @@ ALL_TRAJ_TYPES = ["slow", "normal", "fast", "poly", "zigzag", "pentagram"]
 
 # [0615] 原 eval_datt.py 使用 config_name="train_datt"（TrackDATT0427，3D GT oracle）
 # 此脚本使用 "train_datt0615"（TrackDATT0615，6D GT oracle：平动+转动）
-@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_datt0615")
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="train_datt0615_3d")
 def main(cfg):
     OmegaConf.register_new_resolver("eval", eval)
     OmegaConf.resolve(cfg)

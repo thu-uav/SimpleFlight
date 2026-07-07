@@ -1,0 +1,161 @@
+# =============================================================================
+# [新建 - 2026-06-26] Track_6D.yaml
+# 测试配置：6D 复合扰动（平动+转动），策略无法观测扰动信息（无 GT oracle）
+# 
+# 核心特点：
+#   - 环境类：TrackDATT0615 (已有完整6D扰动实现)
+#   - include_gt_wind: false (策略不观测扰动)
+#   - 所有扰动照常施加（物理层）
+#   - 目的：测试"无观测条件下，6D扰动对轨迹跟踪的影响"
+# =============================================================================
+name: TrackDATT0615   # [0626] 复用TrackDATT0615类，利用其完整6D扰动实现
+# -----------------------------------------------------------------------
+# 无适应轨迹跟踪（6D扰动但无GT观测）
+# Phase 0: single end-to-end MAPPO policy without any GT disturbance info.
+# 测试策略在没有扰动观测下的鲁棒轨迹跟踪性能
+# -----------------------------------------------------------------------
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+
+env:
+  num_envs: 4096
+  max_episode_length: 1000
+
+drone_model: Air
+force_sensor: false
+time_encoding: false
+wind: true
+
+latency: false
+latency_step: 1
+random_latency: true
+
+# ---- 核心配置 ----
+wind_mode: "sinusoidal"
+wind_max: 1.0
+include_gt_wind: false   # [0626] 关键差异：策略不观测 GT 扰动（观测维度从48D缩小到42D）
+
+# ---- trajectory ----
+reset_thres: 1.
+future_traj_steps: 10
+time_encoding_dim: 4
+
+# ---- eval ----
+use_eval: false
+eval_traj: 'normal'
+
+# ---- misc ----
+use_rotor2critic: 0
+use_action_history: false
+action_history_step: 5
+use_ab_wolrd_pos: false
+
+# ---- reward weights ----
+reward_up_weight: 1.0
+reward_spin_weight: 1.0
+reward_acc_weight_init: 0.0
+reward_acc_weight_lr: 0.0005
+reward_acc_max: 0.0
+reward_jerk_weight_init: 0.0
+reward_jerk_weight_lr: 0.0005
+reward_jerk_max: 0.0
+reward_snap_weight_init: 0.0
+reward_snap_weight_lr: 0.0005
+reward_snap_max: 0.0
+reward_action_smoothness_weight_init: 0.0
+reward_action_smoothness_weight_lr: 0.0
+reward_smoothness_max: 0.0
+reward_action_norm_weight_init: 0.0
+reward_action_norm_weight_lr: 0.0001
+reward_norm_max: 0.0
+reward_distance_scale: 5.0
+
+action_transform: PIDrate_FM
+flatten_obs: false
+flatten_state: false
+
+# ================================================================
+# 6D 复合扰动配置（完全复制自TrackDATT0615.yaml）
+# 物理施加6D扰动，但策略无法观测（include_gt_wind=false）
+# ================================================================
+disturbance:
+  enable: true
+  mode: "composite"        # "sinsum" | "composite"
+
+  # 仅应用水平（x-y）扰动，z方向为0
+  horizontal_only: false
+
+  # 将所有分量求和后的总水平扰动范数进行截断
+  clip_total: true
+  max_total_acc_train: 6.0   # m/s^2，总水平加速度截断上限（训练）
+  max_total_acc_eval:  6.0   # m/s^2，总水平加速度截断上限（评估）
+
+  # ============================================================
+  # [mode: sinsum] 原有的多频率正弦叠加参数
+  # a(t) = intensity * sum_j sin(w_j * t),  w_j ~ N(0,1)
+  # ============================================================
+  sinsum:
+    intensity_range: [0.0, 2.0]   # 每个环境的随机强度标量
+    num_freqs: 8                  # 每个轴的频率分量数量
+
+  # ============================================================
+  # [mode: composite] 新型三分量模型
+  # a_dist = clip_xy(a_bias + a_gm + a_swing, max_total_acc)
+  # ============================================================
+
+  # 分量 1：常值偏置
+  bias:
+    enable: true
+    range_train: [-3.5, 3.5]   # m/s^2，每轴独立均匀采样
+    range_eval:  [-3.5, 3.5]   # m/s^2，与训练相同
+
+  # 分量 2：Gauss-Markov随机扰动
+  # a_gm[k+1] = alpha * a_gm[k] + sigma * sqrt(1-alpha^2) * eps
+  gauss_markov:
+    enable: true
+    sigma_range_train: [0.3, 1.5]   # m/s^2，稳态标准差
+    sigma_range_eval:  [0.3, 1.5]   # m/s^2，与训练相同
+    tau_range: [0.5, 2.0]           # 秒，相关时间
+    reset_to_zero: true
+
+  # 分量 3：摆动正弦（悬挂负载钟摆模型）
+  # a_swing_xy(t) = A_xy * sin(2*pi*f_s*t + phi_xy)
+  swing:
+    enable: true
+    amp_range_train: [0.0, 1.0]    # m/s^2，每轴的幅值
+    amp_range_eval:  [0.0, 1.0]    # m/s^2，与训练相同
+    freq_range: [0.3, 1.5]         # Hz，类似钟摆的频率范围
+    random_phase: true             # phi ~ U(0, 2*pi)
+
+  # [0615] 转动扰动子系统（体坐标系，单位 rad/s²）
+  torque_disturbance:
+    enable: true
+
+    # yaw 轴缩放因子（yaw 惯量大，需降低扰动幅值）
+    yaw_scale: 0.4
+
+    # 总范数 clip
+    clip_total: true
+    max_total_ang_acc_train: 3.0   # 训练时最大角加速度 (rad/s²)
+    max_total_ang_acc_eval:  5.0   # 评估时允许更大扰动
+
+    bias:
+      enable: true
+      range_train: [-1.5, 1.5]
+      range_eval:  [-2.5, 2.5]
+
+    gauss_markov:
+      enable: true
+      sigma_range_train: [0.3, 1.0]
+      sigma_range_eval:  [0.8, 2.0]
+      tau_range: [0.3, 1.5]
+      reset_to_zero: true
+
+    swing:
+      enable: true
+      amp_range_train: [0.0, 1.0]
+      amp_range_eval:  [0.0, 2.0]
+      freq_range: [0.3, 1.2]
+      random_phase: true

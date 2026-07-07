@@ -186,14 +186,6 @@ class Track(IsaacEnv):
         # self.prev_prev_actions = torch.zeros(self.num_envs, self.num_drones, 4, device=self.device)
         self.count = 0 # episode of RL training
 
-        # [多任务加权采样] 记录两种轨迹类型（0=poly, 1=zigzag）的历史平均 return (EMA)
-        # 用于在 reset 时动态调整采样权重：return 低的轨迹类型获得更高的训练概率
-        self.traj_weighted_sampling = bool(cfg.task.get("traj_weighted_sampling", True))
-        self.traj_ema_return = torch.full((2,), -500.0, device=self.device)  # 初始值相同，无偏好
-        self.traj_ema_alpha = float(cfg.task.get("traj_ema_alpha", 0.02))   # 越小越平滑，越大越跟紧近期表现
-        self.traj_sample_temp = float(cfg.task.get("traj_sample_temp", 500.0))  # 越大→接近 50/50；越小→集中于差的轨迹
-        self.traj_sample_min_w = float(cfg.task.get("traj_sample_min_w", 0.2))   # 最低采样概率，避免某类型完全被饿死
-
     def _apply_eval_traj(self):
         """Rebuild self.ref for the current eval_traj type. Call after setting eval_traj."""
         self.use_eval = True
@@ -350,10 +342,6 @@ class Track(IsaacEnv):
             "angular_jerk_mean": UnboundedContinuousTensorSpec(1),
             "linear_snap_mean": UnboundedContinuousTensorSpec(1),
             "obs_range": UnboundedContinuousTensorSpec(1),
-            # [多任务加权采样] 每个 env 当前分配的轨迹类型权重（0=poly, 1=zigzag）
-            "traj_style": UnboundedContinuousTensorSpec(1),         # 当前轨迹类型(0/1)
-            "traj_w_poly": UnboundedContinuousTensorSpec(1),        # poly 采样权重
-            "traj_w_zigzag": UnboundedContinuousTensorSpec(1),      # zigzag 采样权重
         }).expand(self.num_envs).to(self.device)
         info_spec = CompositeSpec({
             "drone_state": UnboundedContinuousTensorSpec((self.drone.n, 13), device=self.device),
@@ -378,17 +366,8 @@ class Track(IsaacEnv):
         if not self.use_eval: # mixed
             self.ref[0].reset(env_ids)
             self.ref[1].reset(env_ids)
-            n = len(env_ids)
-            if self.traj_weighted_sampling:
-                # [多任务加权采样] 用 EMA return 计算权重，return 低的轨迹类型获得更多训练机会
-                weights = torch.softmax(-self.traj_ema_return / self.traj_sample_temp, dim=0)
-                weights = weights.clamp(min=self.traj_sample_min_w)
-                weights = weights / weights.sum()
-                new_seq = torch.multinomial(weights.unsqueeze(0).expand(n, -1), 1).squeeze(-1)
-            else:
-                # 消融用：关闭动态权重，退化为 poly/zigzag 50/50 均匀采样。
-                new_seq = torch.randint(0, 2, (n,), device=self.device)
-            self.ref_style_seq[env_ids] = new_seq
+            # reset the valid traj style
+            self.ref_style_seq[env_ids] = torch.randint(0, 2, (len(env_ids),)).to(self.device)
 
         if self.use_eval:
             self.ref.reset(env_ids)
@@ -708,31 +687,6 @@ class Track(IsaacEnv):
         )
         self.stats["return"] += reward
         self.stats["episode_len"][:] = self.progress_buf.unsqueeze(1)
-
-        # [多任务加权采样] done 时更新对应轨迹类型的 EMA return，用于下次 reset 时的加权采样
-        if not self.use_eval and self.traj_weighted_sampling:
-            done_mask = done.squeeze(-1)
-            for style_id in range(2):
-                style_mask = done_mask & (self.ref_style_seq == style_id)
-                if style_mask.any():
-                    batch_ret = self.stats["return"][style_mask].mean()
-                    self.traj_ema_return[style_id] = (
-                        (1.0 - self.traj_ema_alpha) * self.traj_ema_return[style_id]
-                        + self.traj_ema_alpha * batch_ret
-                    )
-            # 计算当前采样权重（用 softmin：return 越低，权重越高）
-            weights = torch.softmax(-self.traj_ema_return / self.traj_sample_temp, dim=0)
-            # 约束最低权重，避免某类型被完全饿死
-            weights = weights.clamp(min=self.traj_sample_min_w)
-            weights = weights / weights.sum()
-            # 写入 stats 供 wandb 监控（每个 env 写相同值）
-            self.stats["traj_w_poly"][:] = weights[0]
-            self.stats["traj_w_zigzag"][:] = weights[1]
-            self.stats["traj_style"][:] = self.ref_style_seq.unsqueeze(1).float()
-        elif not self.use_eval:
-            self.stats["traj_w_poly"][:] = 0.5
-            self.stats["traj_w_zigzag"][:] = 0.5
-            self.stats["traj_style"][:] = self.ref_style_seq.unsqueeze(1).float()
 
         return TensorDict(
             {

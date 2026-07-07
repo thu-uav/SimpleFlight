@@ -1,9 +1,3 @@
-# =============================================================================
-# [版本说明 - 2026-06-14 之前的版本，已备份为 TrackDATT0427_0614.yaml.bak]
-# 本配置对应 TrackDATT0427 环境，仅包含 3D 平动扰动（无转动扰动子系统）。
-# GT oracle 输入 e_dim=3（世界系平动加速度）。
-# 如需 6D 扰动版本，请使用 TrackDATT0615.yaml（TrackDATT0615）。
-# =============================================================================
 name: TrackDATT0427   # 原值: TrackDATT
 # -----------------------------------------------------------------------
 # DATT GT-oracle baseline（0427 扰动模型更新版）
@@ -45,7 +39,6 @@ time_encoding_dim: 4
 # ---- eval ----
 use_eval: false    ###
 eval_traj: 'normal'
-traj_weighted_sampling: true  # true=按EMA return动态加权采样poly/zigzag；false=50/50均匀采样
 
 # ---- misc ----
 use_rotor2critic: 0
@@ -93,10 +86,8 @@ disturbance:
   # 将所有分量求和后的总水平扰动范数进行截断
   # clip_total: false                    # 2026-05-23 之前（第一次设置）
   clip_total: true
-  # max_total_acc_train: 6.0   # m/s^2，总水平加速度截断上限（训练）（2026-06-28 之前）
-  max_total_acc_train: 4.0   # m/s^2，总水平加速度截断上限（训练）
-  # max_total_acc_eval:  6.0   # m/s^2，总水平加速度截断上限（评估）（2026-06-28 之前）
-  max_total_acc_eval:  5.0   # m/s^2，总水平加速度截断上限（评估）
+  max_total_acc_train: 6.0   # m/s^2，总水平加速度截断上限（训练）
+  max_total_acc_eval:  6.0   # m/s^2，总水平加速度截断上限（评估）
 
   # ============================================================
   # [mode: sinsum] 原有的多频率正弦叠加参数
@@ -115,36 +106,29 @@ disturbance:
   bias:
     enable: true
     # range_train: [-2.0, 2.0]   # m/s^2，每轴独立均匀采样（2026-05-23 之前，第一次设置）
-    # range_train: [-3.5, 3.5]   # m/s^2，每轴独立均匀采样（2026-06-28 之前）
-    range_train: [-2.0, 2.0]   # m/s^2，每轴独立均匀采样
+    range_train: [-3.5, 3.5]   # m/s^2，每轴独立均匀采样
     # range_eval:  [-2.0, 2.0]   # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
-    # range_eval:  [-3.5, 3.5]   # m/s^2，与训练相同（2026-06-28 之前）
-    range_eval:  [-3.0, 3.0]   # m/s^2，评估时使用更强持续扰动
+    range_eval:  [-3.5, 3.5]   # m/s^2，与训练相同
 
   # 分量 2：Gauss-Markov随机扰动
   # a_gm[k+1] = alpha * a_gm[k] + sigma * sqrt(1-alpha^2) * eps
   gauss_markov:
     enable: true
     # sigma_range_train: [0.2, 0.8]   # m/s^2，稳态标准差（2026-05-23 之前，第一次设置）
-    # sigma_range_train: [0.3, 1.5]   # m/s^2，稳态标准差（2026-06-28 之前）
-    sigma_range_train: [0.15, 0.7]   # m/s^2，稳态标准差
+    sigma_range_train: [0.3, 1.5]   # m/s^2，稳态标准差
     # sigma_range_eval:  [0.2, 0.8]   # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
-    # sigma_range_eval:  [0.3, 1.5]   # m/s^2，与训练相同（2026-06-28 之前）
-    sigma_range_eval:  [0.3, 1.0]   # m/s^2，评估时使用更强阵风
-    # tau_range: [0.5, 2.0]           # 秒，相关时间（2026-06-28 之前）
-    tau_range: [0.8, 3.0]           # 秒，相关时间
+    sigma_range_eval:  [0.3, 1.5]   # m/s^2，与训练相同
+    tau_range: [0.5, 2.0]           # 秒，相关时间
     reset_to_zero: true
 
   # 分量 3：摆动正弦（悬挂负载钟摆模型）
   # a_swing_xy(t) = A_xy * sin(2*pi*f_s*t + phi_xy)
   swing:
-    enable: false
+    enable: true
     # amp_range_train: [0.0, 0.5]    # m/s^2，每轴的幅值（2026-05-23 之前，第一次设置）
-    # amp_range_train: [0.0, 1.0]    # m/s^2，每轴的幅值（2026-06-28 之前）
-    amp_range_train: [0.0, 0.5]    # m/s^2，每轴的幅值
+    amp_range_train: [0.0, 1.0]    # m/s^2，每轴的幅值
     # amp_range_eval:  [0.0, 0.5]    # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
-    # amp_range_eval:  [0.0, 1.0]    # m/s^2，与训练相同（2026-06-28 之前）
-    amp_range_eval:  [0.0, 0.8]    # m/s^2，评估时使用更强摆动
+    amp_range_eval:  [0.0, 1.0]    # m/s^2，与训练相同
     # freq_range: [0.3, 1.2]         # Hz，类似钟摆的频率范围（2026-05-23 之前，第一次设置）
     freq_range: [0.3, 1.5]         # Hz，类似钟摆的频率范围
     random_phase: true             # phi ~ U(0, 2*pi)

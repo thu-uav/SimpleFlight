@@ -1,0 +1,88 @@
+name: TrackPINN0504
+
+defaults:
+  - /base/env_base@_here_
+  - /base/sim_base@_here_
+
+env:
+  num_envs: 4096
+  max_episode_length: 1000
+
+drone_model: Air
+force_sensor: false
+time_encoding: false
+wind: false          # 旧 sinsum 风扰动关闭，改用复合扰动模型
+latency: false
+latency_step: 1
+random_latency: true
+
+reset_thres: 1.
+future_traj_steps: 10
+time_encoding_dim: 4
+
+use_eval: false
+eval_traj: 'normal'
+use_rotor2critic: 0
+use_action_history: false
+action_history_step: 5
+use_ab_wolrd_pos: false
+
+reward_up_weight: 1.0
+reward_spin_weight: 1.0
+reward_acc_weight_init: 0.0
+reward_acc_weight_lr: 0.0005
+reward_acc_max: 0.0
+reward_jerk_weight_init: 0.0
+reward_jerk_weight_lr: 0.0005
+reward_jerk_max: 0.0
+reward_snap_weight_init: 0.0
+reward_snap_weight_lr: 0.0005
+reward_snap_max: 0.0
+reward_action_smoothness_weight_init: 2.0
+reward_action_smoothness_weight_lr: 0.0005
+reward_smoothness_max: 2.0
+reward_action_norm_weight_init: 0.0
+reward_action_norm_weight_lr: 0.0001
+reward_norm_max: 0.0
+reward_distance_scale: 5.0
+
+action_transform: PIDrate_FM
+
+flatten_obs: false
+flatten_state: false
+
+# ================================================================
+# 复合扰动配置（与 TrackResidual.yaml 对齐）
+# ================================================================
+disturbance:
+  enable: true
+  mode: "composite"
+
+  horizontal_only: false    # 3D 全向扰动
+  clip_total: false         # 不限幅
+
+  max_total_acc_train: 3.0
+  max_total_acc_eval:  3.5
+
+  sinsum:
+    intensity_range: [0.0, 2.0]
+    num_freqs: 8
+
+  bias:
+    enable: true
+    range_train: [-2.0, 2.0]
+    range_eval:  [-2.0, 2.0]
+
+  gauss_markov:
+    enable: true
+    sigma_range_train: [0.2, 0.8]
+    sigma_range_eval:  [0.2, 0.8]
+    tau_range: [0.5, 2.0]
+    reset_to_zero: true
+
+  swing:
+    enable: true
+    amp_range_train: [0.0, 0.5]
+    amp_range_eval:  [0.0, 0.5]
+    freq_range: [0.3, 1.2]
+    random_phase: true

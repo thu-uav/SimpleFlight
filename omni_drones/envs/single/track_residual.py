@@ -276,6 +276,9 @@ class TrackResidual(IsaacEnv):
     def _apply_eval_traj(self):
         """切换评估轨迹类型，重建 self.ref。在设置 eval_traj 后调用。"""
         self.use_eval = True
+        # 切换轨迹时先清掉上一条轨迹的时间相位，避免 poly/zigzag 继承
+        # slow/normal/fast 的 lemniscate 相位偏移。
+        self.traj_t0 = torch.zeros(self.num_envs, 1, device=self.device)
         self.init_rpy_dist = D.Uniform(
             torch.tensor([-.0, -.0, 0.], device=self.device) * torch.pi,
             torch.tensor([0., 0., 0.], device=self.device) * torch.pi

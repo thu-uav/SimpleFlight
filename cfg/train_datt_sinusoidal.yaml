@@ -1,0 +1,53 @@
+# =============================================================================
+# [新建 - 2026-06-19] train_datt_sinusoidal.yaml
+# 对应 04-25_17-01 训练的原始 TrackDATT 环境（sinusoidal wind，无转动扰动）
+# 专用于评估 04-25 checkpoint，与 train_datt0615/train_datt0615_3d 的结果对比
+#
+# 运行：
+#   python eval_datt.py \
+#       --config-name train_datt_sinusoidal \
+#       model_dir=outputs/track_datt/04-25_17-01/wandb/latest-run/files/checkpoint_final.pt \
+#       headless=true
+# =============================================================================
+headless: true
+use_local_usd: false
+
+sim: ${task.sim}
+env: ${task.env}
+
+model_dir: outputs/track_datt/04-25_17-01/wandb/latest-run/files/checkpoint_final.pt
+
+record_video: true
+dist_horizontal_only: false
+
+eval_num_envs: 64
+total_frames: 1000_000_000
+max_iters: -1
+eval_interval: -1
+save_interval: 100
+seed: 0
+
+viewer:
+  resolution: [960, 720]
+  eye: [0., 2.0, 2.5]
+  lookat: [0., 0., 1.0]
+
+wandb:
+  group: ${oc.select:..task.name}
+  run_name: track_datt_sinusoidal   # 区分于 track_datt_3d / track_datt_6d
+  job_type: eval
+  entity: chen_zongy-tsinghua-university
+  project: sim2real
+  mode: online
+  run_id:
+  monitor_gym: True
+  tags:
+
+defaults:
+  - task: TrackDATT_sinusoidal   # 旧版 sinusoidal wind，disturbance.enable=false
+  - algo: mappo
+  - _self_
+
+algo:
+  entropy_coef: 0.01
+  clip_param: 0.1
