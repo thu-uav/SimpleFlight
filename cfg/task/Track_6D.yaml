@@ -1,4 +1,5 @@
 # =============================================================================
+
 # [新建 - 2026-06-26] Track_6D.yaml
 # 测试配置：6D 复合扰动（平动+转动），策略无法观测扰动信息（无 GT oracle）
 # 
@@ -158,4 +159,26 @@ disturbance:
       amp_range_train: [0.0, 1.0]
       amp_range_eval:  [0.0, 2.0]
       freq_range: [0.3, 1.2]
-      random_phase: true
+
+# [Baseline updated - 2026-07-01]
+# Original file backed up as:
+#   /root/SimpleFlight/cfg/task/Track_6D.yaml.20260701.backup
+#
+# Purpose:
+#   6D physical disturbance baseline without any GT disturbance observation.
+#   It inherits the current TrackDATT0615_smooth setup so disturbance magnitude,
+#   action smoothness, drone model, controller, and trajectory settings stay
+#   aligned with the current 6D oracle method.
+# =============================================================================
+# defaults:
+#   - TrackDATT0615_smooth
+#   - _self_
+
+# # Reuse the TrackDATT0615 environment implementation, but do not append gt_wind
+# # to actor observation or critic state.
+# include_gt_wind: false
+
+# # Baseline runs use uniform poly/zigzag sampling, matching the latest ablation
+# # setup instead of the earlier return-weighted sampler.
+# traj_weighted_sampling: false
+

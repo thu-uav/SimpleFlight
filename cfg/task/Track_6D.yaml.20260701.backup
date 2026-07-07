@@ -1,23 +1,18 @@
 # =============================================================================
-# [修改记录 - 2026-06-15]
-# 修改文件：TrackDATT0615.yaml（基于 TrackDATT0427.yaml）
-# 原版备份：TrackDATT0427_0614.yaml.bak
-# 修改内容：
-#   1. name 改为 TrackDATT0615
-#   2. 在 disturbance 块内新增 torque_disturbance 子节（转动扰动，体坐标系 rad/s²）
-#   3. GT oracle 输入扩展为 6D（e_dim=6，平动+转动）
+# [新建 - 2026-06-26] Track_6D.yaml
+# 测试配置：6D 复合扰动（平动+转动），策略无法观测扰动信息（无 GT oracle）
+# 
+# 核心特点：
+#   - 环境类：TrackDATT0615 (已有完整6D扰动实现)
+#   - include_gt_wind: false (策略不观测扰动)
+#   - 所有扰动照常施加（物理层）
+#   - 目的：测试"无观测条件下，6D扰动对轨迹跟踪的影响"
 # =============================================================================
-name: TrackDATT0615   # 复用 TrackDATT0615 类；e_dim=3 使策略只观测平动扰动（对比基准）
-
-# [0617] 对比基准配置：e_dim=3，policy只接收平动3D扰动作为oracle输入
-# 转动扰动照样通过 apply_forces_and_torques_at_pos 施加，但策略看不见
-# 对应新方法（e_dim=6）使用 TrackDATT0615.yaml
-e_dim: 3
+name: TrackDATT0615   # [0626] 复用TrackDATT0615类，利用其完整6D扰动实现
 # -----------------------------------------------------------------------
-# DATT GT-oracle baseline（0427 扰动模型更新版）
-# Phase 1: single end-to-end MAPPO policy with GT wind vector in obs.
-# This is the oracle upper bound (DATT arXiv:2310.09053, Phase 1).
-# 在原 TrackDATT 基础上新增 composite 扰动模型支持。
+# 无适应轨迹跟踪（6D扰动但无GT观测）
+# Phase 0: single end-to-end MAPPO policy without any GT disturbance info.
+# 测试策略在没有扰动观测下的鲁棒轨迹跟踪性能
 # -----------------------------------------------------------------------
 
 defaults:
@@ -37,13 +32,10 @@ latency: false
 latency_step: 1
 random_latency: true
 
-# ---- DATT-specific ----
-# wind_mode 在 disturbance.enable=false 时生效（向后兼容）
-# wind_mode: "sinusoidal"  -- identical to Track (8-freq sinusoidal), default, fair comparison
-# wind_mode: "constant"   -- episode-constant wind (original DATT paper setting)
+# ---- 核心配置 ----
 wind_mode: "sinusoidal"
-wind_max: 1.0            # only used when wind_mode=constant, [m/s^2] per axis
-include_gt_wind: true    # append GT wind acceleration to obs (the adaptive input)
+wind_max: 1.0
+include_gt_wind: false   # [0626] 关键差异：策略不观测 GT 扰动（观测维度从48D缩小到42D）
 
 # ---- trajectory ----
 reset_thres: 1.
@@ -51,11 +43,8 @@ future_traj_steps: 10
 time_encoding_dim: 4
 
 # ---- eval ----
-use_eval: false    ###
+use_eval: false
 eval_traj: 'normal'
-
-traj_weighted_sampling: true  # true=按EMA return动态加权采样poly/zigzag；false=50/50均匀采样
-
 
 # ---- misc ----
 use_rotor2critic: 0
@@ -88,10 +77,8 @@ flatten_obs: false
 flatten_state: false
 
 # ================================================================
-# 扰动模型配置（新增，0427）
-# 替代/扩展原有的 wind 扰动（当 enable=true 时）
-# mode: "sinsum"    -> 原有的多频率正弦叠加（与 wind_mode=sinusoidal 等价）
-#        "composite" -> 偏置 + Gauss-Markov随机 + 摆动正弦（新模型）
+# 6D 复合扰动配置（完全复制自TrackDATT0615.yaml）
+# 物理施加6D扰动，但策略无法观测（include_gt_wind=false）
 # ================================================================
 disturbance:
   enable: true
@@ -101,7 +88,6 @@ disturbance:
   horizontal_only: false
 
   # 将所有分量求和后的总水平扰动范数进行截断
-  # clip_total: false                    # 2026-05-23 之前（第一次设置）
   clip_total: true
   max_total_acc_train: 6.0   # m/s^2，总水平加速度截断上限（训练）
   max_total_acc_eval:  6.0   # m/s^2，总水平加速度截断上限（评估）
@@ -122,18 +108,14 @@ disturbance:
   # 分量 1：常值偏置
   bias:
     enable: true
-    # range_train: [-2.0, 2.0]   # m/s^2，每轴独立均匀采样（2026-05-23 之前，第一次设置）
     range_train: [-3.5, 3.5]   # m/s^2，每轴独立均匀采样
-    # range_eval:  [-2.0, 2.0]   # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
     range_eval:  [-3.5, 3.5]   # m/s^2，与训练相同
 
   # 分量 2：Gauss-Markov随机扰动
   # a_gm[k+1] = alpha * a_gm[k] + sigma * sqrt(1-alpha^2) * eps
   gauss_markov:
     enable: true
-    # sigma_range_train: [0.2, 0.8]   # m/s^2，稳态标准差（2026-05-23 之前，第一次设置）
     sigma_range_train: [0.3, 1.5]   # m/s^2，稳态标准差
-    # sigma_range_eval:  [0.2, 0.8]   # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
     sigma_range_eval:  [0.3, 1.5]   # m/s^2，与训练相同
     tau_range: [0.5, 2.0]           # 秒，相关时间
     reset_to_zero: true
@@ -142,15 +124,12 @@ disturbance:
   # a_swing_xy(t) = A_xy * sin(2*pi*f_s*t + phi_xy)
   swing:
     enable: true
-    # amp_range_train: [0.0, 0.5]    # m/s^2，每轴的幅值（2026-05-23 之前，第一次设置）
     amp_range_train: [0.0, 1.0]    # m/s^2，每轴的幅值
-    # amp_range_eval:  [0.0, 0.5]    # m/s^2，与训练相同（2026-05-23 之前，第一次设置）
     amp_range_eval:  [0.0, 1.0]    # m/s^2，与训练相同
-    # freq_range: [0.3, 1.2]         # Hz，类似钟摆的频率范围（2026-05-23 之前，第一次设置）
     freq_range: [0.3, 1.5]         # Hz，类似钟摆的频率范围
     random_phase: true             # phi ~ U(0, 2*pi)
 
-  # [0615 新增] 转动扰动子系统（体坐标系，单位 rad/s²）
+  # [0615] 转动扰动子系统（体坐标系，单位 rad/s²）
   torque_disturbance:
     enable: true
 
@@ -160,23 +139,23 @@ disturbance:
     # 总范数 clip
     clip_total: true
     max_total_ang_acc_train: 3.0   # 训练时最大角加速度 (rad/s²)
-    max_total_ang_acc_eval:  3.0   # 评估时允许更大扰动
+    max_total_ang_acc_eval:  5.0   # 评估时允许更大扰动
 
     bias:
       enable: true
       range_train: [-1.5, 1.5]
-      range_eval:   [-1.5, 1.5]  #[-2.5, 2.5]
+      range_eval:  [-2.5, 2.5]
 
     gauss_markov:
       enable: true
       sigma_range_train: [0.3, 1.0]
-      sigma_range_eval:  [0.3, 1.0] #[0.8, 2.0]
+      sigma_range_eval:  [0.8, 2.0]
       tau_range: [0.3, 1.5]
       reset_to_zero: true
 
     swing:
       enable: true
       amp_range_train: [0.0, 1.0]
-      amp_range_eval:  [0.0, 1.0]  #[0.0, 2.0]
+      amp_range_eval:  [0.0, 2.0]
       freq_range: [0.3, 1.2]
       random_phase: true
